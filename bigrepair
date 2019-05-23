@@ -4,8 +4,16 @@ import sys, time, argparse, subprocess, os.path
 
 
 Description = """
-Prefix-free parsing + Repair
-"""
+Prefix-free parsing + Repair compression
+
+  Compression:
+     {exe} file [options]
+  creates compressed files file.C and file.R
+
+  Decompression:
+     {exe} file
+  decompresses file.C and file.D to file.out          
+""".format(exe=sys.argv[0])
 
  
 parse_exe = "ctph/newscan.x"
@@ -140,9 +148,6 @@ def execute_command(command,logfile,logfile_name,env=None):
     print("Check log file: " + logfile_name)
     return False
   return True
-
-
-
 
 
 if __name__ == '__main__':

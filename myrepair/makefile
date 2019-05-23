@@ -1,6 +1,9 @@
 
 all: repair despair 
 
+# targets not producing a file declared phony
+.PHONY: all clean
+
 repair: repair.o array.o hash.o heap.o records.o basics.o makefile
 	gcc -O9 -o repair repair.o array.o hash.o heap.o records.o basics.o
 

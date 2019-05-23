@@ -19,5 +19,5 @@ myrepair:
 clean:
 	rm -f procdic postproc
 	make -C ctph clean
-	make -C myrepair
+	make -C myrepair clean
 
