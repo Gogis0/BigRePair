@@ -13,7 +13,7 @@ Prefix-free parsing + Repair compression
   Decompression:
      {exe} file
   decompresses file.C and file.D to file.out          
-""".format(exe=sys.argv[0])
+"""
 
  
 parse_exe = "ctph/newscan.x"
@@ -26,7 +26,7 @@ postprocess_exe = "postproc"
 
 def main():
   show_command_line(sys.stderr)
-  parser = argparse.ArgumentParser(description=Description, formatter_class=argparse.RawTextHelpFormatter)
+  parser = argparse.ArgumentParser(description=Description.format(exe=sys.argv[0]), formatter_class=argparse.RawTextHelpFormatter)
   parser.add_argument('input', help='input file name', type=str)
   parser.add_argument('-w', '--wsize', help='sliding window size (def. 10)', default=10, type=int)
   parser.add_argument('-p', '--mod', help='hash modulus (def. 100)', default=100, type=int)
@@ -37,13 +37,12 @@ def main():
   args = parser.parse_args()
 
   logfile_name = args.input + ".log"
-  # get main pfr directory 
+  # get main bigrepair directory 
   args.main_dir = os.path.split(sys.argv[0])[0]  
   print("Sending logging messages to file:", logfile_name)
   with open(logfile_name,"a") as logfile:
     start0 = start = time.time()
-    
-    
+        
     if(args.d or args.c): # decompress and check
       command = "{exe} {file}".format(
                 exe = os.path.join(args.main_dir,mydespair_exe), file=args.input)
