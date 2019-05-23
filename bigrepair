@@ -11,7 +11,7 @@ Prefix-free parsing + Repair
 parse_exe = "ctph/newscan.x"
 parseNT_exe = "ctph/newscanNT.x"
 myrepair_exe = "myrepair/repair"
-mydespair_exe = "myrepair/repair"
+mydespair_exe = "myrepair/despair"
 preprocess_exe = "procdic"
 postprocess_exe = "postproc"
 
