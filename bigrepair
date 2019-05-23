@@ -8,8 +8,8 @@ Prefix-free parsing + Repair
 """
 
  
-parse_exe = "cpth/newscan.x"
-parseNT_exe = "cpth/newscanNT.x"
+parse_exe = "ctph/newscan.x"
+parseNT_exe = "ctph/newscanNT.x"
 myrepair_exe = "myrepair/repair"
 mydespair_exe = "myrepair/repair"
 preprocess_exe = "procdic"
@@ -23,6 +23,7 @@ def main():
   parser.add_argument('-w', '--wsize', help='sliding window size (def. 10)', default=10, type=int)
   parser.add_argument('-p', '--mod', help='hash modulus (def. 100)', default=100, type=int)
   parser.add_argument('-t', help='number of helper threads (def. None)', default=0, type=int)
+  parser.add_argument('-d',  help='decompress',action='store_true')
   parser.add_argument('-c',  help='decompress and check',action='store_true')
   parser.add_argument('-v', help="verbose", action='store_true')
   args = parser.parse_args()
@@ -35,19 +36,20 @@ def main():
     start0 = start = time.time()
     
     
-    if(args.c): # decompress and check
+    if(args.d or args.c): # decompress and check
       command = "{exe} {file}".format(
                 exe = os.path.join(args.main_dir,mydespair_exe), file=args.input)
       print("==== Decompressing C+R files. Command:", command)
       if(execute_command(command,logfile,logfile_name)!=True):
         return
-      print("Elapsed time: {0:.4f}".format(time.time()-start));      
-      command = "cmp {file} {file}.out".format(file=args.input); 
-      print("==== Comparing decompressed file. Command:", command);
-      if(execute_command(command,logfile,logfile_name)):
-        print("Decompressed file matches");
-      else:
-        print("Decompressed file differs");
+      print("Elapsed time: {0:.4f}".format(time.time()-start));
+      if args.c:      
+        command = "cmp {file} {file}.out".format(file=args.input); 
+        print("==== Comparing decompressed file. Command:", command);
+        if(execute_command(command,logfile,logfile_name)):
+          print("Decompressed file matches");
+        else:
+          print("Decompressed file differs");
       
       
     else:       # pfp + repair

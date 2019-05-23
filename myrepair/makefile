@@ -28,3 +28,5 @@ records.o: records.c array.h hash.h heap.h records.h basics.h makefile
 basics.o: basics.c basics.h makefile
 	gcc -O9 -c basics.c
 
+clean:
+	rm -f repair despair *.o
