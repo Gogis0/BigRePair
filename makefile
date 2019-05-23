@@ -1,4 +1,7 @@
 
+# targets not producing a file declared phony
+.PHONY: all ctph myrepair
+
 all: procdic postproc ctph myrepair
 
 procdic: procdic.c

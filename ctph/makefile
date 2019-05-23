@@ -22,6 +22,5 @@ newscan.x: newscan.cpp newscan.hpp malloc_count.o utils.o xerrors.o
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-
 clean:
 	rm -f $(EXECS) $(EXECS_NT) *.o
