@@ -113,7 +113,7 @@ def main():
       fp = tempfile.TemporaryFile()
       if(execute_command(command,logfile,fp)!=True):
         return      
-      total_time = time.time()-start
+      total_time = time.time()-start0
       print("Elapsed time: {0:.4f}".format(total_time))
       # get the estimated compressed size
       fp.seek(0); estimated_compression = int(fp.read().split()[-1]); fp.close()
