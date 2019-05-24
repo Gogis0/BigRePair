@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
-// stop progra if test is true
+//  exit program with error msg if test is true
 void die(int test,const char *msg)
 {
   if(test) {
@@ -18,7 +18,8 @@ void die(int test,const char *msg)
     exit(1);
   }
 }
- 
+
+
 int bits (int x)
 
    { int l=0;
@@ -43,10 +44,10 @@ void main (int argc, char **argv)
     int *AdiczC; // to read diczC in memory
     int *transl; // translation table for phrases of dicz to their nonterms
 
-    puts("==== Command line:");
+    fprintf(stderr,"==== Command line:\n");
     for(i=0;i<argc;i++)
-      printf(" %s",argv[i]);
-    puts("\n");
+      fprintf(stderr," %s",argv[i]);
+    fputs("\n",stderr);
 
     if (argc != 2)
        { fprintf (stderr,
@@ -203,17 +204,15 @@ void main (int argc, char **argv)
 
     stat(argv[1],&s);
     rules += prules;
-    fprintf(stderr,"Prefix-Free + Repair succeeded\n\n");
+    long est_size = (long) ( (4.0*rules+((double)bits(256+rules))*(rules+psizeC))/8 ) +1;
+    fprintf(stderr,"Prefix-Free + Repair succeeded\n");
     fprintf(stderr,"  Original file size: %li\n",s.st_size);
     fprintf(stderr,"  Number of rules: %i\n",rules);
     fprintf(stderr,"  Final sequence length: %i\n",psizeC);
-    fprintf(stderr,"  Estimated output size (bytes): %ld\n",
-      (long) ( (4.0*rules+((float)bits(256+rules))*(rules+psizeC))/8 )+1);
-    fprintf(stderr,"  Compression ratio: %0.2f%%\n",
-                    100.0*(4.0*rules+((float)bits(256+rules))*(rules+psizeC))
-                        /(8.0*s.st_size));
-
-    puts("=== postprocessing completed!");
+    fprintf(stderr,"  Estimated output size (bytes): %ld\n",est_size);
+    fprintf(stderr,"  Compression ratio: %0.2f%%\n", (100.0* est_size)/s.st_size);
+    fprintf(stdout,"  Estimated output size (stdout): %ld\n",est_size); // don't change this: est_size must be the the last printed item 
+    fprintf(stderr,"=== postprocessing completed!\n");
 
     exit(0);
   }

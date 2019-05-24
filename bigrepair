@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import sys, time, argparse, subprocess, os.path
+import sys, time, argparse, subprocess, os.path, tempfile
 
 
 Description = """
@@ -33,6 +33,8 @@ def main():
   parser.add_argument('-t', help='number of helper threads (def. None)', default=0, type=int)
   parser.add_argument('-d',  help='decompress',action='store_true')
   parser.add_argument('-c',  help='decompress and check',action='store_true')
+  parser.add_argument('-r',  help='compression full report',action='store_true')
+  parser.add_argument('-k',  help='keep intermediate files',action='store_true')
   parser.add_argument('-v', help="verbose", action='store_true')
   args = parser.parse_args()
 
@@ -47,13 +49,13 @@ def main():
       command = "{exe} {file}".format(
                 exe = os.path.join(args.main_dir,mydespair_exe), file=args.input)
       print("==== Decompressing C+R files. Command:", command)
-      if(execute_command(command,logfile,logfile_name)!=True):
+      if(execute_command(command,logfile)!=True):
         return
       print("Elapsed time: {0:.4f}".format(time.time()-start));
       if args.c:      
         command = "cmp {file} {file}.out".format(file=args.input); 
         print("==== Comparing decompressed file. Command:", command);
-        if(execute_command(command,logfile,logfile_name)):
+        if(execute_command(command,logfile)):
           print("Decompressed file matches");
         else:
           print("Decompressed file differs");
@@ -72,52 +74,78 @@ def main():
       if args.v: command += " -v"
       command += " -c"
       print("==== Parsing. Command:", command)
-      if(execute_command(command,logfile,logfile_name)!=True):
+      if(execute_command(command,logfile)!=True):
         return
-      print("Elapsed time: {0:.4f}".format(time.time()-start))
+      ctph_time = time.time()-start
+      print("Elapsed time: {0:.4f}".format(ctph_time))
       # delete temporary parsing files 
-      command = "rm -f {file}.parse_old {file}.last {file}.occ".format(file=args.input)
-      if(execute_command(command,logfile,logfile_name)!=True):
-        return
+      if not args.k:
+        command = "rm -f {file}.parse_old {file}.last {file}.occ".format(file=args.input)
+        if(execute_command(command,logfile)!=True):
+          return
       
       # ---- preprocess the dictionary 
       start = time.time()
       command = "{exe} {file}.dicz".format(
                 exe = os.path.join(args.main_dir,preprocess_exe), file=args.input)
       print("==== Preprocessing the dictionary. Command:", command)
-      if(execute_command(command,logfile,logfile_name)!=True):
+      if(execute_command(command,logfile)!=True):
         return
   
       # ---- apply repair to the modified dictionary     
       command = "{exe} {file}.dicz.int".format(
                 exe = os.path.join(args.main_dir,myrepair_exe), file=args.input)
       print("==== Repair dictionary. Command:", command)
-      if(execute_command(command,logfile,logfile_name)!=True):
+      if(execute_command(command,logfile)!=True):
        return
       
       # ---- apply repair to the parse     
       command = "{exe} {file}.parse".format(
                 exe = os.path.join(args.main_dir,myrepair_exe), file=args.input)
       print("==== Repair parse. Command:", command)
-      if(execute_command(command,logfile,logfile_name)!=True):
+      if(execute_command(command,logfile)!=True):
        return
     
       # ---- postprocess
       command = "{exe} {file}".format(
                 exe = os.path.join(args.main_dir,postprocess_exe), file=args.input)
       print("==== Postprocessing the dictionary. Command:", command)
-      if(execute_command(command,logfile,logfile_name)!=True):
+      fp = tempfile.TemporaryFile()
+      if(execute_command(command,logfile,fp)!=True):
         return      
-      print("Elapsed time: {0:.4f}".format(time.time()-start))
+      total_time = time.time()-start
+      print("Elapsed time: {0:.4f}".format(total_time))
+      # get the estimated compressed size
+      fp.seek(0); estimated_compression = int(fp.read().split()[-1]); fp.close()
       
-      # delete temporary parsing/dictionary files 
-      command = "rm -f {file}.parse {file}.parse.C {file}.parse.R {file}.dicz {file}.dicz.int {file}.dicz.int.C {file}.dicz.int.R".format(file=args.input)
-      if(execute_command(command,logfile,logfile_name)!=True):
-        return
+      if args.r:
+        compression_report(args.input,ctph_time,total_time,estimated_compression)
+      
+      # delete temporary parsing/dictionary files
+      if not args.k:
+        command = "rm -f {file}.parse {file}.parse.C {file}.parse.R {file}.dicz {file}.dicz.int {file}.dicz.int.C {file}.dicz.int.R".format(file=args.input)
+        if(execute_command(command,logfile)!=True):
+          return
       # ---- repair done   
 
   print("==== Done")
 
+
+
+def compression_report(name,t1,ttot,est_compr):
+  print(" >> ctph time: {0:.2f}".format(t1))
+  print(" >> total time: {0:.2f}".format(ttot))
+  isize = os.path.getsize(name)
+  print(" >> input size:",isize)
+  psize = os.path.getsize(name+".parse") 
+  print(" >> ctph_parse size: {0}  ({1:.2f}%)".format(psize,100*psize/isize))
+  dsize = os.path.getsize(name+".dicz") 
+  print(" >> ctph_dict size: {0}  ({1:.2f}%)".format(dsize,100*dsize/isize))
+  csize = os.path.getsize(name+".C") 
+  rsize = os.path.getsize(name+".R") 
+  print(" >> repair size:",csize+rsize, "  (%d+%d)" % (csize,rsize))
+  print(" >> compressed size:", est_compr, "  ({0:.2f}%)".format(100*est_compr/isize))
+  
 
 
 def show_command_line(f):
@@ -137,14 +165,16 @@ def file_digest(name,logfile):
     return hashsum  
       
 # execute command: return True is everything OK, False otherwise
-def execute_command(command,logfile,logfile_name,env=None):
+def execute_command(command,logfile,outfile=None):
   try:
     #subprocess.run(command.split(),stdout=logfile,stderr=logfile,check=True,env=env)
-    subprocess.check_call(command.split(),stdout=logfile,stderr=logfile,env=env)
+    if not outfile:
+      outfile = logfile
+    subprocess.check_call(command.split(),stdout=outfile,stderr=logfile)
   except subprocess.CalledProcessError:
     print("Error executing command line:")
     print("\t"+ command)
-    print("Check log file: " + logfile_name)
+    print("Check log file: " + logfile.name)
     return False
   return True
 
