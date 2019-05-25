@@ -51,7 +51,7 @@ def main():
       print("==== Decompressing C+R files. Command:", command)
       if(execute_command(command,logfile)!=True):
         return
-      print("Elapsed time: {0:.4f}".format(time.time()-start));
+      print("Elapsed time: {0:.4f}".format(time.time()-start0));
       if args.c:      
         command = "cmp {file} {file}.out".format(file=args.input); 
         print("==== Comparing decompressed file. Command:", command);
