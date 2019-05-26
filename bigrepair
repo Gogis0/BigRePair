@@ -19,6 +19,7 @@ Prefix-free parsing + Repair compression
 parse_exe = "ctph/newscan.x"
 parseNT_exe = "ctph/newscanNT.x"
 myrepair_exe = "myrepair/repair"
+largerepair_exe = "large_repair/irepair"
 mydespair_exe = "myrepair/despair"
 preprocess_exe = "procdic"
 postprocess_exe = "postproc"
@@ -34,6 +35,7 @@ def main():
   parser.add_argument('-d',  help='decompress',action='store_true')
   parser.add_argument('-c',  help='decompress and check',action='store_true')
   parser.add_argument('-r',  help='compression full report',action='store_true')
+  parser.add_argument('-m',  help='repair uses at most M MBs',default=0, type=int)
   parser.add_argument('-k',  help='keep intermediate files',action='store_true')
   parser.add_argument('-v', help="verbose", action='store_true')
   args = parser.parse_args()
@@ -92,9 +94,13 @@ def main():
       if(execute_command(command,logfile)!=True):
         return
   
-      # ---- apply repair to the modified dictionary     
-      command = "{exe} {file}.dicz.int".format(
+      # ---- apply repair to the modified dictionary
+      if args.m==0:     
+        command = "{exe} {file}.dicz.int".format(
                 exe = os.path.join(args.main_dir,myrepair_exe), file=args.input)
+      else:
+        command = "{exe} {file}.dicz.int {mb}".format(mb=args.m,
+                exe = os.path.join(args.main_dir,largerepair_exe), file=args.input)
       print("==== Repair dictionary. Command:", command)
       if(execute_command(command,logfile)!=True):
        return
