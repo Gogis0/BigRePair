@@ -106,8 +106,12 @@ def main():
        return
       
       # ---- apply repair to the parse     
-      command = "{exe} {file}.parse".format(
+      if args.m==0:     
+        command = "{exe} {file}.parse".format(
                 exe = os.path.join(args.main_dir,myrepair_exe), file=args.input)
+      else:
+        command = "{exe} {file}.parse {mb}".format(mb=args.m,
+                exe = os.path.join(args.main_dir,largerepair_exe), file=args.input)
       print("==== Repair parse. Command:", command)
       if(execute_command(command,logfile)!=True):
        return
