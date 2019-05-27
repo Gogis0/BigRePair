@@ -204,7 +204,7 @@ void main (int argc, char **argv)
 
     stat(argv[1],&s);
     rules += prules;
-    long est_size = (long) ( (4.0*rules+((double)bits(256+rules))*(rules+psizeC))/8 ) +1;
+    long est_size = (long) ( (2.0*rules+((double)bits(256+rules))*(rules+psizeC))/8 ) +1;
     fprintf(stderr,"Prefix-Free + Repair succeeded\n");
     fprintf(stderr,"  Original file size: %li\n",s.st_size);
     fprintf(stderr,"  Number of rules: %i\n",rules);
