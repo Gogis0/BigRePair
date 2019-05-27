@@ -56,12 +56,12 @@ relong expand (int i, int d)
    { relong ret = 1;
      while (i >= alph)
        { ret += expand(R[i-alph].left,d+1); 
-	 i = R[i-alph].right; d++;
+   i = R[i-alph].right; d++;
        }
      if (putc(map[i],f) == EOF)
-	{ fprintf (stderr,"Error: cannot write file %s\n",ff);
-	  exit(1);
-	}
+  { fprintf (stderr,"Error: cannot write file %s\n",ff);
+    exit(1);
+  }
      if (d > maxdepth) maxdepth = d;
      return ret; 
    }
@@ -75,76 +75,76 @@ void main (int argc, char **argv)
      relong u;
      struct stat s;
      if (argc != 2)
-	{ fprintf (stderr,"Usage: %s <filename>\n"
-			  "Decompresses <filename> from its .C and .R "
-			  "extensions\n\n",argv[0]);
-	  exit(1);
-	}
+  { fprintf (stderr,"Usage: %s <filename>\n"
+        "Decompresses <filename> from its .C and .R "
+        "extensions\n\n",argv[0]);
+    exit(1);
+  }
      strcpy(fname,argv[1]);
      strcat(fname,".R");
      if (stat (fname,&s) != 0)
-	{ fprintf (stderr,"Error: cannot stat file %s\n",fname);
-	  exit(1);
-	}
+  { fprintf (stderr,"Error: cannot stat file %s\n",fname);
+    exit(1);
+  }
      len = s.st_size;
      Rf = fopen (fname,"r");
      if (Rf == NULL)
-	{ fprintf (stderr,"Error: cannot open file %s for reading\n",fname);
-	  exit(1);
-	}
+  { fprintf (stderr,"Error: cannot open file %s for reading\n",fname);
+    exit(1);
+  }
      if (fread(&alph,sizeof(int),1,Rf) != 1)
-	{ fprintf (stderr,"Error: cannot read file %s\n",fname);
-	  exit(1);
-	}
+  { fprintf (stderr,"Error: cannot read file %s\n",fname);
+    exit(1);
+  }
      if (fread(&map,sizeof(char),alph,Rf) != alph)
-	{ fprintf (stderr,"Error: cannot read file %s\n",fname);
-	  exit(1);
-	}
+  { fprintf (stderr,"Error: cannot read file %s\n",fname);
+    exit(1);
+  }
      n = (len-sizeof(int)-alph)/sizeof(Tpair);
      R = (void*)malloc(n*sizeof(Tpair));
      if (fread(R,sizeof(Tpair),n,Rf) != n)
-	{ fprintf (stderr,"Error: cannot read file %s\n",fname);
-	  exit(1);
-	}
+  { fprintf (stderr,"Error: cannot read file %s\n",fname);
+    exit(1);
+  }
      fclose(Rf);
 
      strcpy(fname,argv[1]);
      strcat(fname,".C");
      if (stat (fname,&s) != 0)
-	{ fprintf (stderr,"Error: cannot stat file %s\n",fname);
-	  exit(1);
-	}
+  { fprintf (stderr,"Error: cannot stat file %s\n",fname);
+    exit(1);
+  }
      c = len = s.st_size/sizeof(int);
      Cf = fopen (fname,"r");
      if (Cf == NULL)
-	{ fprintf (stderr,"Error: cannot open file %s for reading\n",fname);
-	  exit(1);
-	}
+  { fprintf (stderr,"Error: cannot open file %s for reading\n",fname);
+    exit(1);
+  }
      Tf = fopen (argv[1],"w");
      if (Tf == NULL)
-	{ fprintf (stderr,"Error: cannot open file %s for writing\n",argv[1]);
-	  exit(1);
-	}
+  { fprintf (stderr,"Error: cannot open file %s for writing\n",argv[1]);
+    exit(1);
+  }
      u = 0; f = Tf; ff = argv[1];
      for (;len>0;len--)
-	{ if (fread(&i,sizeof(int),1,Cf) != 1)
-	     { fprintf (stderr,"Error: cannot read file %s\n",fname);
-	       exit(1);
-	     }
-	  u += expand(i,0);
-	}
+  { if (fread(&i,sizeof(int),1,Cf) != 1)
+       { fprintf (stderr,"Error: cannot read file %s\n",fname);
+         exit(1);
+       }
+    u += expand(i,0);
+  }
      fclose(Cf);
      if (fclose(Tf) != 0)
-	{ fprintf (stderr,"Error: cannot close file %s\n",argv[1]);
-	  exit(1);
-	}
+  { fprintf (stderr,"Error: cannot close file %s\n",argv[1]);
+    exit(1);
+  }
      fprintf (stderr,"DesPair succeeded\n\n");
      fprintf (stderr,"   Original chars: %lli\n",u);
      fprintf (stderr,"   Number of rules: %i\n",n);
      fprintf (stderr,"   Compressed sequence length: %i\n",c);
      fprintf (stderr,"   Maximum rule depth: %i\n",maxdepth);
      fprintf (stderr,"   Compression ratio: %0.2f%%\n",
-                        (4.0*n+(n+c)*(float)blog(n-1))/(u*8.0)*100.0);
+                        (2.0*n+(n+c)*(float)blog(n-1))/(u*8.0)*100.0);
 
      exit(0);
    }

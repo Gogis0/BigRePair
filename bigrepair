@@ -15,13 +15,17 @@ Prefix-free parsing + Repair compression
   decompresses file.C and file.D to file.out          
 """
 
- 
+# ctph parsing 
 parse_exe = "ctph/newscan.x"
 parseNT_exe = "ctph/newscanNT.x"
+# repair: plain and with memory contraint (symbols are integers) 
 myrepair_exe = "myrepair/repair"
 largerepair_exe = "large_repair/irepair"
+# despair (syimbols are chars)
 mydespair_exe = "myrepair/despair"
+# proprocess dict into its
 preprocess_exe = "procdic"
+# create output file
 postprocess_exe = "postproc"
 
 

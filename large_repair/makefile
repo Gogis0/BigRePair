@@ -1,6 +1,8 @@
 
-EXECS = irepair idespair  
-# repair despair toint 
+EXECS = irepair 
+
+# these excutalbes are not used by Rpair 
+#   idespair repair despair toint 
 
 
 CFLAGS = -Wall -g -m64 -O9
