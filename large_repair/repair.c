@@ -233,7 +233,7 @@ relong repair0 (relong len, FILE *R)
 
   { int oid,id;
     relong cpos,pos;
-    Trecord *rec,*orec;
+    Trecord *orec;
     Tpair pair;
     int left,right;
     if (fwrite(&alph,sizeof(int),1,R) != 1) return -1;
@@ -323,32 +323,32 @@ if (PRNC) prntext(len);
 relong repair1 (relong len, FILE *R)
 
   { int oid,id;
-    relong cpos,pos,ofreq;
-    Trecord *rec,*orec;
+    relong cpos,pos;
+    Trecord *orec;
     Tpair pair;
     int left,right;
-if (PRNL) printf ("--- second stage, n=%lli\n",len);
-if (PRNC) prnsC(len);
+    if (PRNL) printf ("--- second stage, n=%lli\n",len);
+    if (PRNC) prnsC(len);
     while (n < 1 << 16)
       { 
         if ((len /1024/1024) * 3 * sizeof(relong) <= MB) return len;
-  else if (PRNP) printf ("Avoiding to use %lli MB\n",
+        else if (PRNP) printf ("Avoiding to use %lli MB\n",
              (len /1024/1024) * 3 * sizeof(relong));
-if (PRNR) prnRec();
-  oid = extractMax(&Heap);
-  if (oid == -1) break; // the end!!
-  orec = &Rec.records[oid];
-  if (fwrite (&orec->pair,sizeof(Tpair),1,R) != 1) return -1;
-        left = orec->pair.left; right = orec->pair.right;
-        ofreq = orec->freq;
-if (PRNP) 
-    { printf("Chosen pair %i = (",n);
-      prnSym(orec->pair.left);
-      printf(",");
-      prnSym(orec->pair.right);
-      printf(") (%lli occs)\n",orec->freq);
-    }
-  pos = 0;
+        if (PRNR) prnRec();
+          oid = extractMax(&Heap);
+          if (oid == -1) break; // the end!!
+          orec = &Rec.records[oid];
+          if (fwrite (&orec->pair,sizeof(Tpair),1,R) != 1) return -1;
+                left = orec->pair.left; right = orec->pair.right;
+                // ofreq = orec->freq;
+        if (PRNP) 
+            { printf("Chosen pair %i = (",n);
+              prnSym(orec->pair.left);
+              printf(",");
+              prnSym(orec->pair.right);
+              printf(") (%lli occs)\n",orec->freq);
+            }
+          pos = 0;
   for (cpos=0;cpos<len-1;cpos++)
      { if ((sC[cpos] != left) || (sC[cpos+1] != right))
     sC[pos] = sC[cpos];
@@ -551,8 +551,7 @@ if (PRNC) prnC();
      return 0;
    }
 
-void main (int argc, char **argv)
-
+int main (int argc, char **argv)
    { char fname[1024];
      FILE *Tf,*Rf,*Cf;
      relong i,olen,len;
@@ -638,12 +637,15 @@ void main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot close file %s\n",fname);
     exit(1);
   }
+  
+     long est_size = (long) ( (2.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/8) + 1;
      fprintf (stderr,"RePair succeeded\n\n");
      fprintf (stderr,"   Original chars: %lli\n",olen);
      fprintf (stderr,"   Number of rules: %i\n",n-alph);
      fprintf (stderr,"   Final sequence length: %lli\n",c);
-     fprintf (stderr,"   Compression ratio: %0.2f%%\n",
-      (2.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/(olen*8.0)*100.0);
+     fprintf (stderr,"   Estimated output size (bytes): %ld\n",est_size);
+     fprintf (stderr,"   Compression ratio: %0.2f%%\n", (100.0* est_size)/olen);
+     // (2.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/(olen*8.0)*100.0);
      exit(0);
    }
 
