@@ -1,5 +1,5 @@
 
-EXECS = irepair 
+EXECS = irepair
 
 # these excutalbes are not used by Rpair 
 #   idespair repair despair toint 
@@ -15,7 +15,7 @@ all: $(EXECS)
 
 
 repair: repair.o array.o hash.o heap.o records.o basics.o makefile
-	gcc $(CFLAGS)-o repair repair.o array.o hash.o heap.o records.o basics.o
+	gcc $(CFLAGS) -o repair repair.o array.o hash.o heap.o records.o basics.o
 
 repair.o: repair.c array.h hash.h heap.h records.h basics.h makefile
 	gcc $(CFLAGS) -c repair.c
