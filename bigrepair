@@ -16,7 +16,7 @@ Prefix-free parsing + Repair compression
 """
 
 # ctph parsing 
-parse_exe = "ctph/newscan.x"
+parse_exe = "ctph/pscan.x"
 parseNT_exe = "ctph/newscanNT.x"
 # repair: plain and with memory contraint (symbols are integers) 
 myrepair_exe = "myrepair/repair"
