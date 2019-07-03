@@ -11,7 +11,7 @@ Prefix-free parsing + Repair compression
   creates compressed files file.C and file.R
 
   Decompression:
-     {exe} file
+     {exe} -d file [options]
   decompresses file.C and file.D to file.out          
 """
 
