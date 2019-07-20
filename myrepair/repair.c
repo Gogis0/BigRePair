@@ -358,6 +358,7 @@ int main (int argc, char **argv)
      fprintf (stderr,"   Original ints: %i\n",len);
      fprintf (stderr,"   Number of rules: %i\n",n-alph);
      fprintf (stderr,"   Final sequence length: %i\n",c);
+     fprintf (stderr,"  Estimated output size (bytes): %ld\n",est_size);
      // compression ratio computed assuming each input symbol takes ceil(log(alph-1)) bits 
      fprintf (stderr,"   Compression ratio: %0.2f%%\n",
         (100.0* est_size*8)/(len*(double)blog(alph-1)) );
