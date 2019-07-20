@@ -1,3 +1,12 @@
+/*
+This program is part of BigRepair: it is applied to the dictionary and 
+the parse produced bt CTPH parsing; these are both sequences of ints so
+this program was obtained by irepair.c in the original repair tool
+ 
+The output size and compression ratio should be ignored when used inside
+BigRepair since the output must be further processed by postproc.c 
+*/
+
 
 /*
 
@@ -277,7 +286,7 @@ if (PRNC) prnC();
      return 0;
    }
 
-void main (int argc, char **argv)
+int main (int argc, char **argv)
 
    { char fname[1024];
      FILE *Tf,*Rf,*Cf;
@@ -342,12 +351,15 @@ void main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot close file %s\n",fname);
     exit(1);
   }
+  
+     // size in bytes of the compact representation  
+     long est_size = (long) ( (2*(n-alph)+((n-alph)+c)*(long)blog(n-1))/8) + 1;  
      fprintf (stderr,"RePair succeeded\n\n");
      fprintf (stderr,"   Original ints: %i\n",len);
      fprintf (stderr,"   Number of rules: %i\n",n-alph);
      fprintf (stderr,"   Final sequence length: %i\n",c);
+     // compression ratio computed assuming each input symbol takes ceil(log(alph-1)) bits 
      fprintf (stderr,"   Compression ratio: %0.2f%%\n",
-      (2.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/(float)(len*8)*100.0);
+        (100.0* est_size*8)/(len*(double)blog(alph-1)) );
      exit(0);
    }
-

@@ -12,9 +12,10 @@ Prefix-free parsing + Repair compression
 
   Decompression:
      {exe} -d file [options]
-  decompresses file.C and file.D to file.out          
+  decompresses file.C and file.R to file.out          
 """
 
+# path of auxiliaty tools
 # ctph parsing 
 parse_exe = "ctph/pscan.x"
 parseNT_exe = "ctph/newscanNT.x"
@@ -45,8 +46,8 @@ def main():
   args = parser.parse_args()
 
   logfile_name = args.input + ".log"
-  # get main bigrepair directory 
-  args.main_dir = os.path.split(sys.argv[0])[0]  
+  # get absolute path to main bigrepair directory 
+  args.main_dir = os.path.dirname(os.path.abspath(__file__))
   print("Sending logging messages to file:", logfile_name)
   with open(logfile_name,"a") as logfile:
     start0 = start = time.time()
