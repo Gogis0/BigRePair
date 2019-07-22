@@ -77,6 +77,9 @@
  * of each word (file .occ) are used to compute the final BWT by the 
  * pfbwt algorithm.
  * 
+ * Note: if the -c option is used, the parsing is computed for compression
+ * purposes rather than for building the BWT. In this case the redundant 
+ * information (phrases overlaps and 0x2's) is not written to the output files. 
  */
 #include <assert.h>
 #include <errno.h>
@@ -361,6 +364,7 @@ void print_help(char** argv, Args &args) {
         << "\t-w W\tsliding window size, def. " << args.w << endl
         << "\t-p M\tmodulo for defining phrases, def. " << args.p << endl
         << "\t-t M\tnumber of helper threads, def. 4 " << endl
+        << "\t-c  \tdiscard redundant information" << endl
         << "\t-h  \tshow help and exit" << endl
         << "\t-s  \tcompute suffix array info" << endl;
   exit(1);
@@ -415,7 +419,7 @@ void parseArgs( int argc, char** argv, Args& arg ) {
      exit(1);
    }
    if(arg.p<10) {
-     cout << "Modulus must be at leas 10\n";
+     cout << "Modulus must be at least 10\n";
      exit(1);
    }
    if(arg.th<=0) {

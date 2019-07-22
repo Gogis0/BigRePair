@@ -1,7 +1,7 @@
 /* ******************************************************************************
  * newscan.cpp
  * 
- * parsing algorithm for the bwt construction for repetitive sequences based 
+ * parsing algorithm for bwt construction of repetitive sequences based 
  * on prefix free parsing. See:
  *   Christina Boucher, Travis Gagie, Alan Kuhnle and Giovanni Manzini
  *   Prefix-Free Parsing for Building Big BWTs
@@ -12,7 +12,7 @@
  * 
  * Accepts any kind of file that does not contain the chars 0x0, 0x1, 0x2 
  * which are used internally. If input file is gzipped use cnewscan.x which 
- * automatcally extracts the content
+ * automatically extracts the content
  * 
  * The parameters wsize and modulus are used to define the prefix free parsing 
  * using KR-fingerprints (see paper)
@@ -76,6 +76,9 @@
  * of each word (file .occ) are used to compute the final BWT by the 
  * pfbwt algorithm.
  * 
+ * Note: if the -c option is used, the parsing is computed for compression
+ * purposes rather than for building the BWT. In this case the redundant 
+ * information (phrases overlaps and 0x2's) is not written to the output files. 
  */
 #include <assert.h>
 #include <errno.h>
@@ -393,6 +396,7 @@ void print_help(char** argv, Args &args) {
         #ifndef NOTHREADS
         << "\t-t M\tnumber of helper threads, def. none " << endl
         #endif        
+        << "\t-c  \tdiscard redundant information" << endl
         << "\t-h  \tshow help and exit" << endl
         << "\t-s  \tcompute suffix array info" << endl;
   #ifdef GZSTREAM
