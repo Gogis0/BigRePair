@@ -84,7 +84,7 @@ def main():
       if(execute_command(command,logfile)!=True):
         return
       ctph_time = time.time()-start
-      print("Elapsed time: {0:.4f}".format(ctph_time))
+      print("Parsing time: {0:.4f}".format(ctph_time))
       # delete temporary parsing files 
       if not args.k:
         command = "rm -f {file}.parse_old {file}.last {file}.occ".format(file=args.input)
@@ -98,8 +98,11 @@ def main():
       print("==== Preprocessing the dictionary. Command:", command)
       if(execute_command(command,logfile)!=True):
         return
+      preprocess_time = time.time()-start
+      print("Preprocess time: {0:.4f}".format(preprocess_time))
   
       # ---- apply repair to the modified dictionary
+      start = time.time()
       if args.m==0:     
         command = "{exe} {file}.dicz.int".format(
                 exe = os.path.join(args.main_dir,myrepair_exe), file=args.input)
@@ -109,8 +112,11 @@ def main():
       print("==== Repair dictionary. Command:", command)
       if(execute_command(command,logfile)!=True):
        return
+      repair_time = time.time()-start
+      print("repair(dict) time: {0:.4f}".format(repair_time))
       
       # ---- apply repair to the parse     
+      start = time.time()
       if args.m==0:     
         command = "{exe} {file}.parse".format(
                 exe = os.path.join(args.main_dir,myrepair_exe), file=args.input)
@@ -120,14 +126,20 @@ def main():
       print("==== Repair parse. Command:", command)
       if(execute_command(command,logfile)!=True):
        return
-    
+      repair_time = time.time()-start
+      print("repair(parse) time: {0:.4f}".format(repair_time))
+
       # ---- postprocess
+      start = time.time()
       command = "{exe} {file}".format(
                 exe = os.path.join(args.main_dir,postprocess_exe), file=args.input)
       print("==== Postprocessing the dictionary. Command:", command)
       fp = tempfile.TemporaryFile()
       if(execute_command(command,logfile,fp)!=True):
         return      
+      postprocess_time = time.time()-start
+      print("Postprocess time: {0:.4f}".format(postprocess_time))
+
       total_time = time.time()-start0
       print("Elapsed time: {0:.4f}".format(total_time))
       # get the estimated compressed size
