@@ -40,7 +40,7 @@ def main():
   parser.add_argument('-d',  help='decompress',action='store_true')
   parser.add_argument('-c',  help='decompress and check',action='store_true')
   parser.add_argument('-r',  help='compression full report',action='store_true')
-  parser.add_argument('-m',  help='repair uses at most M MBs',default=0, type=int)
+  parser.add_argument('-m',  help='force repair to use at most M MBs',default=0, type=int)
   parser.add_argument('-k',  help='keep intermediate files',action='store_true')
   parser.add_argument('-v', help="verbose", action='store_true')
   args = parser.parse_args()
