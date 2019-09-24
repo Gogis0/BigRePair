@@ -66,7 +66,7 @@ void *mt_parse(void *dx)
     if(hash%arg->p==0 && d->parsed>arg->w) {
       // end of word, save it and write its full hash to the output file
       // pos is the ending position+1 of previous word and is updated in the next call
-      save_update_word(word,arg->w,*wordFreq,d->parse,d->last,d->sa,pos);
+      save_update_word(*arg,word,*wordFreq,d->parse,d->last,d->sa,pos);
       d->words++;
       if(d->start+d->skipped+d->parsed>=d->end+arg->w) {f.close(); return NULL;}
     }    
@@ -74,7 +74,7 @@ void *mt_parse(void *dx)
   // end of file reached 
   // virtually add w null chars at the end of the file and add the last word in the dict
   word.append(arg->w,Dollar);
-  save_update_word(word,arg->w,*wordFreq,d->parse,d->last,d->sa,pos);
+  save_update_word(*arg,word,*wordFreq,d->parse,d->last,d->sa,pos);
   // close input file and return 
   f.close();
   return NULL;
@@ -121,6 +121,7 @@ uint64_t mt_process_file(Args& arg, map<uint64_t,word_stats>& wf)
       cout << "s:" << td[i].start << "  e:" << td[i].end << "  pa:";
       cout << td[i].parsed << "  sk:" << td[i].skipped << "  wo:" << td[i].words << endl;
     }
+    // close thread-specific output files 
     fclose(td[i].parse);
     fclose(td[i].last);
     if(td[i].sa) fclose(td[i].sa);
@@ -132,12 +133,6 @@ uint64_t mt_process_file(Args& arg, map<uint64_t,word_stats>& wf)
     else assert(i>0); // the first thread must produce some words
   }
   assert(tot_char==size);
-  // close output files 
-  #if 0
-  if(sa) if(fclose(sa)!=0) die("Error closing SA file");
-  if(fclose(last)!=0) die("Error closing last file");  
-  if(fclose(parse)!=0) die("Error closing parse file");
-  #endif
   return size;   
 }
 

@@ -19,7 +19,7 @@
  * 
  * The algorithm computes the prefix free parsing of 
  *     T = (0x2)file_content(0x2)^wsize
- * cresting a dictionary of words D and a parsing P of T in terms of the  
+ * creating a dictionary of words D and a parsing P of T in terms of the  
  * dictionary words. Consecutive words in the parsing overlap by wsize.
  *
  * Let d denote the number of words in D and p the number of phrases in 
@@ -43,13 +43,13 @@
  * is at most 2^32-1, so the size is 4p bytes
  * 
  * file.last 
- * contaning the charater in positon w+1 from the end for each dictionary word
- * Size: d
+ * containing the charater in positon w+1 from the end for each dictionary word
+ * Size: p
  * 
  * file.sai (if option -s is given on the command line) 
  * containing the ending position +1 of each dictionary word in the original
  * text written using IBYTES bytes for each entry (IBYTES defined in utils.h)
- * Size: d*IBYTES
+ * Size: p*IBYTES
  * 
  * The output of pscan must be processed by bwtparse, which invoked as
  * 

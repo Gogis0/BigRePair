@@ -42,13 +42,13 @@
  * is at most 2^32-1, so the size is 4p bytes
  * 
  * file.last 
- * contaning the charater in positon w+1 from the end for each dictionary word
- * Size: d
+ * containing the character in position w+1 from the end for each dictionary word
+ * Size: p
  * 
  * file.sai (if option -s is given on the command line) 
- * containing the ending position +1 of each dictionary word in the original
- * text written using IBYTES bytes for each entry 
- * Size: d*IBYTES
+ * containing the ending position +1 of each parsed word in the original
+ * text written using IBYTES bytes for each entry (IBYTES defined in utils.h) 
+ * Size: p*IBYTES
  * 
  * The output of newscan must be processed by bwtparse, which invoked as
  * 
@@ -68,7 +68,7 @@
  * 
  * If the option -s is given to bwtparse, it permutes file.sai according
  * to the BWT permutation and generate file.bwsai using again IBYTES
- * per entry.  file.bwsai[i] is the ending position+1 ofBWT[i] in the 
+ * per entry.  file.bwsai[i] is the ending position+1 of BWT[i] in the 
  * original text 
  * 
  * The output of bwtparse (the files .ilist .bwlast) together with the
@@ -189,7 +189,7 @@ struct KR_window {
 };
 // -----------------------------------------------------------
 
-static void save_update_word(string& w, unsigned int minsize,map<uint64_t,word_stats>&  freq, FILE *tmp_parse_file, FILE *last, FILE *sa, uint64_t &pos);
+static void save_update_word(Args& arg, string& w, map<uint64_t,word_stats>&  freq, FILE *tmp_parse_file, FILE *last, FILE *sa, uint64_t &pos);
 
 #ifndef NOTHREADS
 #include "newscan.hpp"
@@ -215,10 +215,17 @@ uint64_t kr_hash(string s) {
 
 // save current word in the freq map and update it leaving only the 
 // last minsize chars which is the overlap with next word  
-static void save_update_word(string& w, unsigned int minsize,map<uint64_t,word_stats>&  freq, FILE *tmp_parse_file, FILE *last, FILE *sa, uint64_t &pos)
+static void save_update_word(Args& arg, string& w, map<uint64_t,word_stats>& freq, FILE *tmp_parse_file, FILE *last, FILE *sa, uint64_t &pos)
 {
+  size_t minsize = arg.w; 
   assert(pos==0 || w.size() > minsize);
   if(w.size() <= minsize) return;
+  // save overlap 
+  string overlap(w.substr(w.size() - minsize)); // keep last minsize chars
+  // if we are compressing, discard the overlap
+  if(arg.compress)
+     w.erase(w.size() - minsize); // erase last minsize chars 
+  
   // get the hash value and write it to the temporary parse file
   uint64_t hash = kr_hash(w);
   if(fwrite(&hash,sizeof(hash),1,tmp_parse_file)!=1) die("parse write error");
@@ -247,15 +254,20 @@ static void save_update_word(string& w, unsigned int minsize,map<uint64_t,word_s
 #ifndef NOTHREADS
   xpthread_mutex_unlock(&map_mutex,__LINE__,__FILE__);
 #endif
-  // output char w+1 from the end
-  if(fputc(w[w.size()- minsize-1],last)==EOF) die("Error writing to .last file");
-  // compute ending position +1 of current word and write it to sa file 
-  // pos is the ending position+1 of the previous word and is updated here 
-  if(pos==0) pos = w.size()-1; // -1 is for the initial $ of the first word
-  else pos += w.size() -minsize; 
-  if(sa) if(fwrite(&pos,IBYTES,1,sa)!=1) die("Error writing to sa info file");
+  if(arg.compress) 
+    pos += w.size(); // if compressing, just update position 
+  else {
+    // update last/sa files  
+    // output char w+1 from the end
+    if(fputc(w[w.size()- minsize-1],last)==EOF) die("Error writing to .last file");
+    // compute ending position +1 of current word and write it to sa file 
+    // pos is the ending position+1 of the previous word and is updated here 
+    if(pos==0) pos = w.size()-1; // -1 is for the initial $ of the first word
+    else pos += w.size() -minsize; 
+    if(sa) if(fwrite(&pos,IBYTES,1,sa)!=1) die("Error writing to sa info file");
+  } 
   // keep only the overlapping part of the window
-  w.erase(0,w.size() - minsize);
+  w.assign(overlap);
 }
 
 
@@ -278,40 +290,50 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
 
   // open the 1st pass parsing file 
   FILE *g = open_aux_file(arg.inputFileName.c_str(),EXTPARS0,"wb");
-  // open output file containing the char at position -(w+1) of each word
-  FILE *last_file = open_aux_file(arg.inputFileName.c_str(),EXTLST,"wb");  
-  // if requested open file containing the ending position+1 of each word
-  FILE *sa_file = NULL;
-  if(arg.SAinfo) 
-    sa_file = open_aux_file(arg.inputFileName.c_str(),EXTSAI,"wb");
+  FILE *sa_file = NULL, *last_file=NULL;
+  if(!arg.compress) {
+    // open output file containing the char at position -(w+1) of each word
+    last_file = open_aux_file(arg.inputFileName.c_str(),EXTLST,"wb");  
+    // if requested open file containing the ending position+1 of each word
+    if(arg.SAinfo) 
+      sa_file = open_aux_file(arg.inputFileName.c_str(),EXTSAI,"wb");
+  }
+  
   
   // main loop on the chars of the input file
   int c;
   uint64_t pos = 0; // ending position +1 of previous word in the original text, used for computing sa_info 
   assert(IBYTES<=sizeof(pos)); // IBYTES bytes of pos are written to the sa info file 
-  // init first word in the parsing with a Dollar char 
+  // init first word in the parsing with a Dollar char unless we are just compressing
   string word("");
-  word.append(1,Dollar);
+  if(!arg.compress) word.append(1,Dollar);
   // init empty KR window: constructor only needs window size
   KR_window krw(arg.w);
   while( (c = f.get()) != EOF ) {
-    if(c<=Dollar) {cerr << "Invalid char found in input file: no additional chars will be read\n"; break;}
+    if(c<=Dollar && !arg.compress) {
+      // if we are not simply compressing then we cannot accept 0,1,or 2
+      cerr << "Invalid char found in input file: no additional chars will be read\n"; break;
+    }
     word.append(1,c);
     uint64_t hash = krw.addchar(c);
     if(hash%arg.p==0) {
       // end of word, save it and write its full hash to the output file
       // cerr << "~"<< c << "~ " << hash << " ~~ <" << word << "> ~~ <" << krw.get_window() << ">" <<  endl;
-      save_update_word(word,arg.w,wordFreq,g,last_file,sa_file,pos);
+      save_update_word(arg,word,wordFreq,g,last_file,sa_file,pos);
     }    
   }
   // virtually add w null chars at the end of the file and add the last word in the dict
   word.append(arg.w,Dollar);
-  save_update_word(word,arg.w,wordFreq,g,last_file,sa_file,pos);
+  save_update_word(arg,word,wordFreq,g,last_file,sa_file,pos);
   // close input and output files 
   if(sa_file) if(fclose(sa_file)!=0) die("Error closing SA file");
-  if(fclose(last_file)!=0) die("Error closing last file");  
+  if(last_file) if(fclose(last_file)!=0) die("Error closing last file");  
   if(fclose(g)!=0) die("Error closing parse file");
-  if(pos!=krw.tot_char+arg.w) cerr << "Pos: " << pos << " tot " << krw.tot_char << endl;
+  if(arg.compress)
+    assert(pos==krw.tot_char);
+  else 
+    assert(pos==krw.tot_char+arg.w);
+  // if(pos!=krw.tot_char+arg.w) cerr << "Pos: " << pos << " tot " << krw.tot_char << endl;
   f.close();
   return krw.tot_char;
 }
@@ -327,36 +349,50 @@ bool pstringCompare(const string *a, const string *b)
 void writeDictOcc(Args &arg, map<uint64_t,word_stats> &wfreq, vector<const string *> &sortedDict)
 {
   assert(sortedDict.size() == wfreq.size());
-  FILE *fdict;
+  FILE *fdict, *fwlen=NULL, *focc=NULL;
   // open dictionary and occ files
-  if(arg.compress)
+  if(arg.compress) {
     fdict = open_aux_file(arg.inputFileName.c_str(),EXTDICZ,"wb");
-  else
+    fwlen = open_aux_file(arg.inputFileName.c_str(),EXTWLEN,"wb");
+  }
+  else {
     fdict = open_aux_file(arg.inputFileName.c_str(),EXTDICT,"wb");
-  FILE *focc = open_aux_file(arg.inputFileName.c_str(),EXTOCC,"wb");
+    focc = open_aux_file(arg.inputFileName.c_str(),EXTOCC,"wb");
+  }
   
   word_int_t wrank = 1; // current word rank (1 based)
-  for(auto x: sortedDict) {
+  for(auto x: sortedDict) {          // *x is the string representing the dictionary word
     const char *word = (*x).data();       // current dictionary word
-    int offset=0; size_t len = (*x).size();  // offset and length of word
-    assert(len>(size_t)arg.w);
-    if(arg.compress) {  // if we are compressing remove overlapping and extraneous chars
-      len -= arg.w;     // remove the last w chars 
-      if(word[0]==Dollar) {offset=1; len -= 1;} // remove the very first Dollar
-    }
-    size_t s = fwrite(word+offset,1,len, fdict);
-    if(s!=len) die("Error writing to DICT file");
-    if(fputc(EndOfWord,fdict)==EOF) die("Error writing EndOfWord to DICT file");
+    size_t len = (*x).size();  // offset and length of word
+    assert(len>(size_t)arg.w || arg.compress);
+    //if(arg.compress) {  // if we are compressing remove overlapping and extraneous chars
+    //  len -= arg.w;     // remove the last w chars 
+    //  if(word[0]==Dollar) {offset=1; len -= 1;} // remove the very first Dollar
+    // }
     uint64_t hash = kr_hash(*x);
     auto& wf = wfreq.at(hash);
     assert(wf.occ>0);
-    s = fwrite(&wf.occ,sizeof(wf.occ),1, focc);
-    if(s!=1) die("Error writing to OCC file");
+    size_t s = fwrite(word,1,len, fdict);
+    if(s!=len) die("Error writing to DICT file");
+    if(arg.compress) {
+      s = fwrite(&len,4,1,fwlen);
+      if(s!=1) die("Error writing to WLEN file");
+    }
+    else {
+      if(fputc(EndOfWord,fdict)==EOF) die("Error writing EndOfWord to DICT file");
+      s = fwrite(&wf.occ,sizeof(wf.occ),1, focc);
+      if(s!=1) die("Error writing to OCC file");
+    }
     assert(wf.rank==0);
     wf.rank = wrank++;
   }
-  if(fputc(EndOfDict,fdict)==EOF) die("Error writing EndOfDict to DICT file");
-  if(fclose(focc)!=0) die("Error closing OCC file");
+  if(arg.compress) {
+    if(fclose(fwlen)!=0) die("Error closing WLEN file");
+  }
+  else {
+    if(fputc(EndOfDict,fdict)==EOF) die("Error writing EndOfDict to DICT file");
+    if(fclose(focc)!=0) die("Error closing OCC file");
+  }
   if(fclose(fdict)!=0) die("Error closing DICT file");
 }
 
