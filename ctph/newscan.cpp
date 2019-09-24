@@ -353,7 +353,7 @@ void writeDictOcc(Args &arg, map<uint64_t,word_stats> &wfreq, vector<const strin
   // open dictionary and occ files
   if(arg.compress) {
     fdict = open_aux_file(arg.inputFileName.c_str(),EXTDICZ,"wb");
-    fwlen = open_aux_file(arg.inputFileName.c_str(),EXTWLEN,"wb");
+    fwlen = open_aux_file(arg.inputFileName.c_str(),EXTDZLEN,"wb");
   }
   else {
     fdict = open_aux_file(arg.inputFileName.c_str(),EXTDICT,"wb");

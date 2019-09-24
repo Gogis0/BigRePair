@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
   if(close(dict_fd)!=0) die("error closing dictionary file");
 
   // compute # words, and save starting points
-  int wlen_fd = fd_open_aux_file(arg.basename,EXTWLEN,O_RDONLY);
+  int wlen_fd = fd_open_aux_file(arg.basename,EXTDZLEN,O_RDONLY);
   long size = lseek(wlen_fd, 0, SEEK_END); // move to end of gile and get position
   assert(size%4==0); 
   long words = size/4;

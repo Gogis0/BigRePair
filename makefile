@@ -1,14 +1,23 @@
+# compilation flags
+CFLAGS=-g -Wall -std=c99
+
+# executables in this directory
+EXECS=procdic procdic_new postproc 
 
 # targets not producing a file declared phony
 .PHONY: all ctph myrepair large_repair clean
 
-all: procdic postproc ctph myrepair large_repair
+
+all: $(EXECS) ctph myrepair large_repair
 
 procdic: procdic.c
-	gcc -O9 -o procdic procdic.c
+	gcc $(CFLAGS) -o $@ $<
+
+procdic_new: procdic_new.c
+	gcc $(CFLAGS) -o $@ $<
 
 postproc: postproc.c
-	gcc -O9 -o postproc postproc.c
+	gcc $(CFLAGS) -o $@ $<
 
 ctph:
 	make -C ctph
@@ -20,7 +29,7 @@ large_repair:
 	make -C large_repair
 
 clean:
-	rm -f procdic postproc
+	rm -f $(EXECS)
 	make -C ctph clean
 	make -C myrepair clean
 	make -C large_repair clean

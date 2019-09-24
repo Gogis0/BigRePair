@@ -25,7 +25,7 @@ largerepair_exe = "large_repair/irepair"
 # despair (syimbols are chars)
 mydespair_exe = "myrepair/despair"
 # proprocess dict into its
-preprocess_exe = "procdic"
+preprocess_exe = "procdic_new"
 # create output file
 postprocess_exe = "postproc"
 
