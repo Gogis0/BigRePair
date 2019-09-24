@@ -11,7 +11,7 @@
  *   pscan.x wsize modulus file
  * 
  * Accepts any kind of file that does not contain the chars 0x0, 0x1, 0x2 
- * which are used internally. If input file is gzipped use pscan.x which 
+ * which are used internally. If input file is gzipped use cnewscan.x which 
  * automatically extracts the content
  * 
  * The parameters wsize and modulus are used to define the prefix free parsing 

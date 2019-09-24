@@ -36,11 +36,11 @@ void *mt_parse(void *dx)
   int c; string word = ""; 
   d->skipped = d->parsed = d->words = 0;
   if(d->start==0) {
-    word.append(1,Dollar);// no need to reach the next kr-window 
+    if(!arg->compress) word.append(1,Dollar);// no need to reach the next kr-window 
   }
   else {   // reach the next breaking window  
     while( (c = f.get()) != EOF ) {
-      if(c<=Dollar) die("Invalid char found in input file. Exiting...");
+      if(c<=Dollar && !arg->compress) die("Invalid char found in input file. Exiting...");
       d->skipped++;
       if(d->start + d->skipped == d->end + arg->w) {f.close(); return NULL;} 
       word.append(1,c);
@@ -59,7 +59,7 @@ void *mt_parse(void *dx)
   if(pos>0) pos+= d->skipped+ arg->w;  // or 0 for the first word  
   assert(IBYTES<=sizeof(pos)); // IBYTES bytes of pos are written to the sa info file 
   while( (c = f.get()) != EOF ) {
-    if(c<=Dollar) die("Invalid char found in input file. Exiting...");
+    if(c<=Dollar && !arg->compress) die("Invalid char found in input file. Exiting...");
     word.append(1,c);
     uint64_t hash = krw.addchar(c);
     d->parsed++;
@@ -106,10 +106,13 @@ uint64_t mt_process_file(Args& arg, map<uint64_t,word_stats>& wf)
     assert(td[i].end<=size);
     // open the 1st pass parsing file 
     td[i].parse = open_aux_file_num(arg.inputFileName.c_str(),EXTPARS0,i,"wb");
-    // open output file containing the char at position -(w+1) of each word
-    td[i].last = open_aux_file_num(arg.inputFileName.c_str(),EXTLST,i,"wb");  
-    // if requested open file containing the ending position+1 of each word
-    td[i].sa = arg.SAinfo ?open_aux_file_num(arg.inputFileName.c_str(),EXTSAI,i,"wb") : NULL;
+    if(!arg.compress) {
+      // open output file containing the char at position -(w+1) of each word
+      td[i].last = open_aux_file_num(arg.inputFileName.c_str(),EXTLST,i,"wb");  
+      // if requested open file containing the ending position+1 of each word
+      td[i].sa = arg.SAinfo ?open_aux_file_num(arg.inputFileName.c_str(),EXTSAI,i,"wb") : NULL;
+    }
+    else { td[i].last = td[i].sa = NULL;}
     xpthread_create(&t[i],NULL,&mt_parse,&td[i],__LINE__,__FILE__);
   }
   
@@ -123,7 +126,7 @@ uint64_t mt_process_file(Args& arg, map<uint64_t,word_stats>& wf)
     }
     // close thread-specific output files 
     fclose(td[i].parse);
-    fclose(td[i].last);
+    if(td[i].last) fclose(td[i].last);
     if(td[i].sa) fclose(td[i].sa);
     if(td[i].words>0) {
       // extra check
