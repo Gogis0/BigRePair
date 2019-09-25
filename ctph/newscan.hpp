@@ -40,7 +40,10 @@ void *mt_parse(void *dx)
   }
   else {   // reach the next breaking window  
     while( (c = f.get()) != EOF ) {
-      if(c<=Dollar && !arg->compress) die("Invalid char found in input file. Exiting...");
+      if(c<=Dollar && !arg->compress) {
+        // if we are not simply compressing then we cannot accept 0,1,or 2
+        cerr << "Invalid char found in input file. Exiting...\n"; exit(1);
+      }
       d->skipped++;
       if(d->start + d->skipped == d->end + arg->w) {f.close(); return NULL;} 
       word.append(1,c);
@@ -59,7 +62,10 @@ void *mt_parse(void *dx)
   if(pos>0) pos+= d->skipped+ arg->w;  // or 0 for the first word  
   if(arg->SAinfo) assert(IBYTES<=sizeof(pos)); // IBYTES bytes of pos are written to the sa info file 
   while( (c = f.get()) != EOF ) {
-    if(c<=Dollar && !arg->compress) die("Invalid char found in input file. Exiting...");
+    if(c<=Dollar && !arg->compress) {
+      // if we are not simply compressing then we cannot accept 0,1,or 2
+      cerr << "Invalid char found in input file. Exiting...\n"; exit(1);
+    }
     word.append(1,c);
     uint64_t hash = krw.addchar(c);
     d->parsed++;

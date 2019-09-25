@@ -20,73 +20,13 @@
  * The parameters wsize and modulus are used to define the prefix free parsing 
  * using KR-fingerprints (see paper)
  * 
- * *** BWT construction ***
- *  
- * The algorithm computes the prefix free parsing of 
- *     T = (0x2)file_content(0x2)^wsize
- * creating a dictionary of words D and a parsing P of T in terms of the  
- * dictionary words. Consecutive words in the parsing overlap by wsize.
- *
- * Let d denote the number of words in D and p the number of phrases in 
- * the parsing P
+ * pscan.x takes the same input and options as newscan.x and produces the same
+ * output files. The only difference is that pscan is usually faster when 
+ * using multiple threads (optioni -t). For single thread computation 
+ * use newscanNT that doesn't even compile the code for handling threads. 
  * 
- * pscan outputs the following files:
+ * For details on the format of input and output files see newscan.cpp 
  * 
- * file.dict
- * containing the dictionary words in lexicographic order with a 0x1 at the end of
- * each word and a 0x0 at the end of the file. Size: |D| + d + 1 where
- * |D| is the sum of the word lengths
- * 
- * file.occ
- * the number of occurrences of each word in lexicographic order.
- * We assume the number of occurrences of each word is at most 2^32-1
- * so the size is 4d bytes
- * 
- * file.parse
- * containing the parse P with each word identified with its 1-based lexicographic 
- * rank (ie its position in D). We assume the number of distinct words
- * is at most 2^32-1, so the size is 4p bytes
- * 
- * file.last 
- * containing the charater in positon w+1 from the end for each dictionary word
- * Size: p
- * 
- * file.sai (if option -s is given on the command line) 
- * containing the ending position +1 of each dictionary word in the original
- * text written using IBYTES bytes for each entry (IBYTES defined in utils.h)
- * Size: p*IBYTES
- * 
- * The output of pscan must be processed by bwtparse, which invoked as
- * 
- *    bwtparse file
- * 
- * computes the BWT of file.parse and produces file.ilist of size 4p+4 bytes
- * contaning, for each dictionary word in lexicographic order, the list 
- * of BWT positions where that word appears (ie i\in ilist(w) <=> BWT[i]=w).
- * There is also an entry for the EOF word which is not in the dictionary 
- * but is assumed to be the smallest word.  
- * 
- * In addition, bwtparse permutes file.last according to
- * the BWT permutation and generates file.bwlast such that file.bwlast[i] 
- * is the char from P[SA[i]-2] (if SA[i]==0 , BWT[i]=0 and file.bwlast[i]=0, 
- * if SA[i]==1, BWT[i]=P[0] and file.bwlast[i] is taken from P[n-1], the last 
- * word in the parsing).  
- * 
- * If the option -s is given to bwtparse, it permutes file.sai according
- * to the BWT permutation and generate file.bwsai using again IBYTES
- * per entry.  file.bwsai[i] is the ending position+1 of BWT[i] in the 
- * original text 
- * 
- * The output of bwtparse (the files .ilist .bwlast) together with the
- * dictionary itself (file .dict) and the number of occurrences
- * of each word (file .occ) are used to compute the final BWT by the 
- * pfbwt algorithm.
- * 
- * *** compression mode ***
- * 
- * If the -c option is used, the parsing is computed for compression
- * purposes rather than for building the BWT. In this case the redundant 
- * information (phrases overlaps and 0x2's) is not written to the output files. 
  */
 #include <assert.h>
 #include <errno.h>
@@ -319,10 +259,6 @@ void writeDictOcc(Args &arg, MTmaps &mtmaps, vector<const string *> &sortedDict)
     const char *word = (*x).data();       // current dictionary word
     size_t len = (*x).size();  // offset and length of word
     assert(len>(size_t)arg.w || arg.compress);
-    // if(arg.compress) {  // if we are compressing remove overlapping and extraneous chars
-    //  len -= arg.w;     // remove the last w chars 
-    //  if(word[0]==Dollar) {offset=1; len -= 1;} // remove the very first Dollar
-    // }
     uint64_t hash = kr_hash(*x);
     auto& wf = (mtmaps.maps[hash%mtmaps.n]).at(hash);
     assert(wf.occ>0);

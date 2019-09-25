@@ -10,13 +10,21 @@
  * Usage:
  *   newscan.x wsize modulus file
  * 
- * Accepts any kind of file that does not contain the chars 0x0, 0x1, 0x2 
- * which are used internally. If input file is gzipped use cnewscan.x which 
- * automatically extracts the content
+ * Unless the parameter -c (compression rather than BWT construction,
+ * see "Compression mode" below) the input file cannot contain 
+ * the characters 0x0, 0x1, 0x2 which are used internally. 
+ * 
+ * Since the i-th thread accesses the i-th segment of the input file 
+ * random access (fseek) must be possible. For gzipped inputs use 
+ * cnewscan.x which doesn't use threads but automatically extracts the 
+ * content from a gzipped input using the lz library. 
  * 
  * The parameters wsize and modulus are used to define the prefix free parsing 
  * using KR-fingerprints (see paper)
  * 
+ * 
+ * *** BWT construction ***
+ *  
  * The algorithm computes the prefix free parsing of 
  *     T = (0x2)file_content(0x2)^wsize
  * in a dictionary of words D and a parsing P of T in terms of the  
@@ -24,7 +32,7 @@
  * Let d denote the number of words in D and p the number of phrases in 
  * the parsing P
  * 
- * newscan outputs the following files:
+ * newscan.x outputs the following files:
  * 
  * file.dict
  * containing the dictionary words in lexicographic order with a 0x1 at the end of
@@ -50,7 +58,7 @@
  * text written using IBYTES bytes for each entry (IBYTES defined in utils.h) 
  * Size: p*IBYTES
  * 
- * The output of newscan must be processed by bwtparse, which invoked as
+ * The output of newscan.x must be processed by bwtparse, which invoked as
  * 
  *    bwtparse file
  * 
@@ -75,10 +83,49 @@
  * dictionary itself (file .dict) and the number of occurrences
  * of each word (file .occ) are used to compute the final BWT by the 
  * pfbwt algorithm.
+ *
+ * As an additional check to the correctness of the parsing, it is 
+ * possible to reconstruct the original file from the files .dict
+ * and .parse using the unparse tool.  
  * 
- * Note: if the -c option is used, the parsing is computed for compression
+ * 
+ *  *** Compression mode ***
+ * 
+ * If the -c option is used, the parsing is computed for compression
  * purposes rather than for building the BWT. In this case the redundant 
- * information (phrases overlaps and 0x2's) is not written to the output files. 
+ * information (phrases overlaps and 0x2's) is not written to the output files.
+ * 
+ * In addition, the input can contain also the characters 0x0, 0x1, 0x2
+ * (ie can be any input file). The program computes a quasi prefix-free 
+ * parsing (with no overlaps): 
+ * 
+ *   T = w_0 w_1 w_2 ... w_{p-1}
+ *
+ * where each word w_i, except the last one, ends with a lenght-w suffix s_i
+ * such that KR(s_i) mod p = 0 and s_i is the only lenght-w substring of
+ * w_i with that property, with the possible exception of the lenght-w
+ * prefix of w_0.
+ * 
+ * In Compression mode newscan.x outputs the following files:
+ * 
+ * file.dicz
+ * containing the concatenation of the (distinct) dictionary words in 
+ * lexicographic order. 
+ * Size: |D| where |D| is the sum of the word lengths
+ * 
+ * file.dicz.len
+ * containing the lenght in bytes of the dictionary words again in 
+ * lexicographic order. Each lenght is represented by a 32 bit int.
+ * Size: 4d where d is the number of distinct dictionary words. 
+ * 
+ * file.parse
+ * containing the parse P with each word identified with its 1-based lexicographic 
+ * rank (ie its position in D). We assume the number of distinct words
+ * is at most 2^32-1, so the size is 4p bytes.
+ * 
+ * From the above three files it is possible to recover the original input
+ * using the unparsz tool.
+ * 
  */
 #include <assert.h>
 #include <errno.h>
@@ -312,7 +359,7 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
   while( (c = f.get()) != EOF ) {
     if(c<=Dollar && !arg.compress) {
       // if we are not simply compressing then we cannot accept 0,1,or 2
-      cerr << "Invalid char found in input file: no additional chars will be read\n"; break;
+      cerr << "Invalid char found in input file. Exiting...\n"; exit(1);
     }
     word.append(1,c);
     uint64_t hash = krw.addchar(c);
@@ -365,10 +412,6 @@ void writeDictOcc(Args &arg, map<uint64_t,word_stats> &wfreq, vector<const strin
     const char *word = (*x).data();       // current dictionary word
     size_t len = (*x).size();  // offset and length of word
     assert(len>(size_t)arg.w || arg.compress);
-    //if(arg.compress) {  // if we are compressing remove overlapping and extraneous chars
-    //  len -= arg.w;     // remove the last w chars 
-    //  if(word[0]==Dollar) {offset=1; len -= 1;} // remove the very first Dollar
-    // }
     uint64_t hash = kr_hash(*x);
     auto& wf = wfreq.at(hash);
     assert(wf.occ>0);
