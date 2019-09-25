@@ -31,12 +31,12 @@ void *mt_parse(void *dx)
   }
 
   // prepare for parsing 
-  f.seekg(d->start); // move to the begining of assigned region
+  f.seekg(d->start); // move to the beginning of assigned region
   KR_window krw(arg->w);
   int c; string word = ""; 
   d->skipped = d->parsed = d->words = 0;
   if(d->start==0) {
-    if(!arg->compress) word.append(1,Dollar);// no need to reach the next kr-window 
+    if(!arg->compress) word.append(1,Dollar); // no need to reach the next kr-window 
   }
   else {   // reach the next breaking window  
     while( (c = f.get()) != EOF ) {
@@ -57,7 +57,7 @@ void *mt_parse(void *dx)
   // there is some parsing to do
   uint64_t pos = d->start;             // ending position+1 in text of previous word
   if(pos>0) pos+= d->skipped+ arg->w;  // or 0 for the first word  
-  assert(IBYTES<=sizeof(pos)); // IBYTES bytes of pos are written to the sa info file 
+  if(arg->SAinfo) assert(IBYTES<=sizeof(pos)); // IBYTES bytes of pos are written to the sa info file 
   while( (c = f.get()) != EOF ) {
     if(c<=Dollar && !arg->compress) die("Invalid char found in input file. Exiting...");
     word.append(1,c);

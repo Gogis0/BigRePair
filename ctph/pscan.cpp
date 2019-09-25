@@ -10,13 +10,18 @@
  * Usage:
  *   pscan.x wsize modulus file
  * 
- * Accepts any kind of file that does not contain the chars 0x0, 0x1, 0x2 
- * which are used internally. If input file is gzipped use cnewscan.x which 
- * automatically extracts the content
+ * Unless the parameter -c (compression rather than BWT construction) 
+ * the input file cannot contain the chars 0x0, 0x1, 0x2 which are used internally. 
+ * 
+ * Since the i-th thread accesses the i-th segment of the input file 
+ * random access (fseek) must be possible. If the input is gzipped 
+ * use cnewscan.x doen't use threads but automatically extracts the content
  * 
  * The parameters wsize and modulus are used to define the prefix free parsing 
  * using KR-fingerprints (see paper)
  * 
+ * *** BWT construction ***
+ *  
  * The algorithm computes the prefix free parsing of 
  *     T = (0x2)file_content(0x2)^wsize
  * creating a dictionary of words D and a parsing P of T in terms of the  
@@ -77,7 +82,9 @@
  * of each word (file .occ) are used to compute the final BWT by the 
  * pfbwt algorithm.
  * 
- * Note: if the -c option is used, the parsing is computed for compression
+ * *** compression mode ***
+ * 
+ * If the -c option is used, the parsing is computed for compression
  * purposes rather than for building the BWT. In this case the redundant 
  * information (phrases overlaps and 0x2's) is not written to the output files. 
  */
@@ -296,37 +303,51 @@ bool pstringCompare(const string *a, const string *b)
 // also compute the 1-based rank for each hash
 void writeDictOcc(Args &arg, MTmaps &mtmaps, vector<const string *> &sortedDict)
 {
-  FILE *fdict;
+  FILE *fdict, *fwlen=NULL, *focc=NULL;
   // open dictionary and occ files
-  if(arg.compress)
+  if(arg.compress) {
     fdict = open_aux_file(arg.inputFileName.c_str(),EXTDICZ,"wb");
-  else
+    fwlen = open_aux_file(arg.inputFileName.c_str(),EXTDZLEN,"wb");
+  }
+  else {
     fdict = open_aux_file(arg.inputFileName.c_str(),EXTDICT,"wb");
-  FILE *focc = open_aux_file(arg.inputFileName.c_str(),EXTOCC,"wb");
+    focc = open_aux_file(arg.inputFileName.c_str(),EXTOCC,"wb");
+  }
   
   word_int_t wrank = 1; // current word rank (1 based)
   for(auto x: sortedDict) {
     const char *word = (*x).data();       // current dictionary word
-    int offset=0; size_t len = (*x).size();  // offset and length of word
-    assert(len>(size_t)arg.w);
-    if(arg.compress) {  // if we are compressing remove overlapping and extraneous chars
-      len -= arg.w;     // remove the last w chars 
-      if(word[0]==Dollar) {offset=1; len -= 1;} // remove the very first Dollar
-    }
-    size_t s = fwrite(word+offset,1,len, fdict);
-    if(s!=len) die("Error writing to DICT file");
-    if(fputc(EndOfWord,fdict)==EOF) die("Error writing EndOfWord to DICT file");
+    size_t len = (*x).size();  // offset and length of word
+    assert(len>(size_t)arg.w || arg.compress);
+    // if(arg.compress) {  // if we are compressing remove overlapping and extraneous chars
+    //  len -= arg.w;     // remove the last w chars 
+    //  if(word[0]==Dollar) {offset=1; len -= 1;} // remove the very first Dollar
+    // }
     uint64_t hash = kr_hash(*x);
     auto& wf = (mtmaps.maps[hash%mtmaps.n]).at(hash);
     assert(wf.occ>0);
-    s = fwrite(&wf.occ,sizeof(wf.occ),1, focc);
-    if(s!=1) die("Error writing to OCC file");
+    size_t s = fwrite(word,1,len, fdict);
+    if(s!=len) die("Error writing to DICT file");
+    if(arg.compress) {
+      s = fwrite(&len,4,1,fwlen);
+      if(s!=1) die("Error writing to WLEN file");
+    }
+    else {
+      if(fputc(EndOfWord,fdict)==EOF) die("Error writing EndOfWord to DICT file");
+      s = fwrite(&wf.occ,sizeof(wf.occ),1, focc);
+      if(s!=1) die("Error writing to OCC file");
+    }
     assert(wf.rank==0);
     wf.rank = wrank++;
   }
-  if(fputc(EndOfDict,fdict)==EOF) die("Error writing EndOfDict to DICT file");
-  if(fclose(focc)!=0) die("Error closing OCC file");
-  if(fclose(fdict)!=0) die("Error closing DICT file");
+  if(arg.compress) {
+    if(fclose(fwlen)!=0) die("Error closing WLEN file");
+  }
+  else {
+    if(fputc(EndOfDict,fdict)==EOF) die("Error writing EndOfDict to DICT file");
+    if(fclose(focc)!=0) die("Error closing OCC file");
+  }
+  if(fclose(fdict)!=0) die("Error closing DICT file");  
 }
 
 void remapParse(Args &arg, MTmaps &mtmaps)
@@ -424,6 +445,10 @@ void parseArgs( int argc, char** argv, Args& arg ) {
    }
    if(arg.th<=0) {
      cout << "There must be at least one helper thread\n";
+     exit(1);
+   }
+   if(arg.compress && arg.SAinfo) {
+     cout << "Options -c and -s are incompatible\n";
      exit(1);
    }
 }
