@@ -1,6 +1,6 @@
 /*
 This program is part of BigRepair: it is applied to the dictionary and 
-the parse produced bt CTPH parsing; these are both sequences of ints so
+the parse produced by CTPH parsing; these are both sequences of ints so
 this program was obtained by irepair.c in the original repair tool
  
 The output size and compression ratio should be ignored when used inside

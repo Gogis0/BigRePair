@@ -162,13 +162,26 @@ typedef uint32_t word_int_t;
 // maximum number of occurrences of a single word
 #define MAX_WORD_OCC (UINT32_MAX)
 typedef uint32_t occ_int_t;
+// type used to represent chars when PARSE_WORDS is defined
+//#ifdef PARSE_WORDS
+typedef uint32_t char_int_t;
+//#endif
+
 
 // values of the wordFreq map: word, its number of occurrences, and its rank
+#ifdef PARSE_WORDS
+struct word_stats {
+  vector<char_int_t> str;
+  occ_int_t occ;
+  word_int_t rank=0;
+};
+#else
 struct word_stats {
   string str;
   occ_int_t occ;
   word_int_t rank=0;
 };
+#endif
 
 // -------------------------------------------------------------
 // struct containing command line parameters and other globals
@@ -187,9 +200,9 @@ struct Args {
 // class to maintain a window in a string and its KR fingerprint
 struct KR_window {
   int wsize;
-  int *window;
-  int asize;
-  const uint64_t prime = 1999999973;
+  uint32_t *window;
+  int asize;            // alphabet size 
+  const uint64_t prime = 1999999973; // slightly less that 2^31
   uint64_t hash;
   uint64_t tot_char;
   uint64_t asize_pot;   // asize^(wsize-1) mod prime 
@@ -200,7 +213,7 @@ struct KR_window {
     for(int i=1;i<wsize;i++) 
       asize_pot = (asize_pot*asize)% prime; // ugly linear-time power algorithm  
     // alloc and clear window
-    window = new int[wsize];
+    window = new uint32_t[wsize];
     reset();     
   }
   
@@ -211,7 +224,7 @@ struct KR_window {
     hash=tot_char=0;    
   }
   
-  uint64_t addchar(int c) {
+  uint64_t addchar(uint32_t c) {
     int k = tot_char++ % wsize;
     // complex expression to avoid negative numbers 
     hash += (prime - (window[k]*asize_pot) % prime); // remove window[k] contribution  
@@ -220,6 +233,7 @@ struct KR_window {
     // cerr << get_window() << " ~~ " << window << " --> " << hash << endl;
     return hash; 
   }
+  #if 0
   // debug only 
   string get_window() {
     string w = "";
@@ -228,6 +242,7 @@ struct KR_window {
       w.append(1,window[i%wsize]);
     return w;
   }
+  #endif
   
   ~KR_window() {
     delete[] window;
@@ -258,6 +273,22 @@ uint64_t kr_hash(string s) {
     return hash; 
 }
 
+
+uint64_t kr_hash(vector<char_int_t> s) {
+    uint64_t hash = 0;
+    const int size = sizeof(char_int_t);
+    const uint64_t prime = 27162335252586509; // next prime (2**54 + 2**53 + 2**47 + 2**13)
+    for(size_t k=0;k<s.size();k++) {
+      char_int_t sk = s[k];
+      for(int j=0;j<size;j++) {
+        int c = (unsigned char) (sk&255); // get last 8 bits
+        sk = sk >>8;                      // discard bits just read 
+        assert(c>=0 && c< 256);           // useless check 
+        hash = (256*hash + c) % prime;    // add byte c
+      }
+    } 
+    return hash; 
+}
 
 
 // save current word in the freq map and update it leaving only the 

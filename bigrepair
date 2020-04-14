@@ -19,12 +19,12 @@ Prefix-free parsing + Repair compression
 # ctph parsing 
 parse_exe = "ctph/pscan.x"
 parseNT_exe = "ctph/newscanNT.x"
-# repair: plain and with memory constraint (symbols are integers) 
+# repair: plain and with memory constraint (symbols are integers in both tools) 
 myrepair_exe = "myrepair/repair"
 largerepair_exe = "large_repair/irepair"
-# despair (syimbols are chars)
+# despair (symbols are chars)
 mydespair_exe = "myrepair/despair"
-# proprocess dict into its
+# preprocess dict into a sequence on int32 representing both chars and distinv EOS 
 preprocess_exe = "procdic_new"
 # create output file
 postprocess_exe = "postproc"
