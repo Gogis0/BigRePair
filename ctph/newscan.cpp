@@ -137,7 +137,7 @@
 #include <iomanip>
 #include <sstream>
 #include <ctime>
-#include <string>
+#include <string.h>
 #include <fstream>
 #include <algorithm>
 #include <random>
@@ -166,11 +166,11 @@ typedef uint32_t occ_int_t;
 #ifdef PARSE_WORDS
 typedef uint32_t char_int_t;
 #endif
-// type used to represent a sequence of input symbol trasformed to chars 
+// type used to represent a sequence of input symbol trasformed to bytes 
 typedef vector<uint8_t> ztring; 
 
 
-// values of the wordFreq map: word, its number of occurrences, and its rank
+// values of the wordFreq map: word, its number of occurrences, and its lex rank
 struct word_stats {
   ztring str;
   occ_int_t occ;
@@ -255,12 +255,29 @@ struct KR_window {
 };
 // -----------------------------------------------------------
 
-static void save_update_word(Args& arg, string& w, map<uint64_t,word_stats>&  freq, FILE *tmp_parse_file, FILE *last, FILE *sa, uint64_t &pos);
+
 
 #ifndef NOTHREADS
 #include "newscan.hpp"
 #endif
 
+// ----------- overloading << for vectors
+template <typename T>
+std::ostream& operator<< (std::ostream& out, const std::vector<T>& v) {
+  if ( !v.empty() ) {
+    out << '[';
+    for(auto i: v) out << i << " "; 
+    out << "\b]";
+  }
+  return out;
+}
+
+// ---- append n bytes of b[] to the zstring w; used to add a new symbol to the current word
+static void ztring_append(ztring &w, uint8_t *b, int n);
+// ---- reverse a byte buffer
+static void buffer_reverse(uint8_t* b, int n);
+// ---- transform integers to littelEndian anb write them to file
+void fwrite_littleEndian(const uint8_t *b, int s, int n, FILE *f); 
 
 
 // compute 64-bit KR hash of a ztring 
@@ -277,29 +294,10 @@ uint64_t kr_hash(ztring s) {
     return hash; 
 }
 
-#if 0
-// compute a KR hash for the sequence of integers stored in vector s
-uint64_t kr_hash(vector<char_int_t> s) {
-    uint64_t hash = 0;
-    const int size = sizeof(char_int_t);
-    const uint64_t prime = 27162335252586509; // next prime (2**54 + 2**53 + 2**47 + 2**13)
-    for(size_t k=0;k<s.size();k++) {
-      char_int_t sk = s[k];
-      for(int j=0;j<size;j++) {
-        int c = (unsigned char) (sk&255); // get last 8 bits
-        sk = sk >>8;                      // discard bits just read 
-        assert(c>=0 && c< 256);           // useless check 
-        hash = (256*hash + c) % prime;    // add byte c
-      }
-    } 
-    return hash; 
-}
-#endif
-
 
 // save current word w in the freq map and update it leaving only the 
 // last minsize chars which is the overlap with next word  
-static void save_update_word(Args& arg, zstring& w, map<uint64_t,word_stats>& freq, FILE *tmp_parse_file, FILE *last, FILE *sa, uint64_t &pos)
+static void save_update_word(Args& arg, ztring& w, map<uint64_t,word_stats>& freq, FILE *tmp_parse_file, FILE *last, FILE *sa, uint64_t &pos)
 {
   size_t minsize = arg.w;  // no word should be smaller than windows size 
   assert(pos==0 || w.size() > (minsize * arg.bytexsymb));
@@ -351,15 +349,7 @@ static void save_update_word(Args& arg, zstring& w, map<uint64_t,word_stats>& fr
     if(sa) if(fwrite(&pos,IBYTES,1,sa)!=1) die("Error writing to sa info file");
   } 
   // keep only the overlapping part of the window
-  w.assign(overlap);
-}
-
-// append n bytes of b[] to the zstring w
-// used to add a new symbol to the current word
-void zstring_append(zstring &w, uint8_t *b, int n)
-{
-  for(int i=0;i<n;i++)
-    w.push_back(b[i]);
+  w.assign(overlap.begin(),overlap.end());
 }
 
 // prefix free parse of a file. the main input parameters are in arg 
@@ -392,7 +382,7 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
   // init buffers containing a single symbol 
   assert(arg.bytexsymb>0);
   uint8_t buffer[arg.bytexsymb], dollar[arg.bytexsymb];
-  for(int=0;i<arg.bytexsymb-1;i++) dollar[i] = 0;
+  for(int i=0;i<arg.bytexsymb-1;i++) dollar[i] = 0;
    dollar[arg.bytexsymb-1] = Dollar;  // this is the generalized Dollar symbol  
 
   // main loop on the symbols of the input file
@@ -401,27 +391,27 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
   // init first word in the parsing with a Dollar symbol unless we are just compressing
   ztring word;
   if(!arg.compress) 
-    zstring_append(word,dollar,arg.bytexsymb)
+    ztring_append(word,dollar,arg.bytexsymb);
   // init empty KR window
   KR_window krw(arg.w,arg.bytexsymb);
   
-  while( !f.feof() ) {
-    int e = fread(buffer,1,arg.bytexsymb,f);
+  while( true ) {
+    f.read((char *)buffer,arg.bytexsymb);
     // we must be able to read exactly arg.bytexsymb bytes otherwise the symbol is incomplete
-    if(e!=arg.bytexsymb) {
-      cerr << "Incomplete symbol at position " << pos <<" Exiting....\n"; exit(2);
+    if(f.gcount()!=arg.bytexsymb) {
+      if(f.gcount()==0) break;
+      else {cerr << "Incomplete symbol at position " << pos <<" Exiting....\n"; exit(2);}
     }
-    // if bigEndian swap bytes as we want to compare byte sequences 
-    if(arg.bigEndian)
-      for(int i=0;j=arg.bytexsymb-1;i<j;i++,j--) {
-        uint8_t t = buffer[i]; buffer[i]=buffer[j]; buffer[j]=t;
-      }
+    // if not bigEndian swap bytes as we want to compare byte sequences 
+    if(arg.bytexsymb>1 && !arg.bigEndian)
+      buffer_reverse(buffer,arg.bytexsymb);
+      
     // if we are not simply compressing then we cannot accept 0,1,or 2
     if(!arg.compress && memcmp(buffer,dollar,arg.bytexsymb) <= 0) {
       cerr << "Invalid symbol at position " << pos <<" Exiting...\n"; exit(1);
     }
     // add new symbol to curret word and check is we reached a splitting point 
-    zstring_append(word,buffer,arg.bytexsymb);
+    ztring_append(word,buffer,arg.bytexsymb);
     uint64_t hash = krw.addsymbol(buffer);
     if(hash%arg.p==0) {
       // end of word, save it and write its full hash to the output file
@@ -430,7 +420,7 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
   }
   // virtually add w null chars at the end of the file and add the last word in the dict
   for(int i=0;i<arg.w;i++)
-    zstring_append(word,dollar,arg.bytexsymb);
+    ztring_append(word,dollar,arg.bytexsymb);
   save_update_word(arg,word,wordFreq,g,last_file,sa_file,pos);
 
   // close input and output files 
@@ -446,22 +436,10 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
   return krw.tot_symb;
 }
 
-// function used to compare two string pointers
-bool pstringCompare(const string *a, const string *b)
-{
-  return *a <= *b;
-}
-
-// function used to compare two ztring pointers
-bool pstringCompare(const ztring *a, const ztring *b)
-{
-  return *a <= *b;
-}
-
 
 // given the sorted dictionary and the frequency map write the dictionary and occ files
 // also compute the 1-based rank for each hash
-void writeDictOcc(Args &arg, map<uint64_t,word_stats> &wfreq, vector<const string *> &sortedDict)
+void writeDictOcc(Args &arg, map<uint64_t,word_stats> &wfreq, vector<const ztring *> &sortedDict)
 {
   assert(sortedDict.size() == wfreq.size());
   FILE *fdict, *fwlen=NULL, *focc=NULL;
@@ -476,22 +454,33 @@ void writeDictOcc(Args &arg, map<uint64_t,word_stats> &wfreq, vector<const strin
   }
   
   word_int_t wrank = 1; // current word rank (1 based)
-  for(auto x: sortedDict) {          // *x is the string representing the dictionary word
-    const char *word = (*x).data();       // current dictionary word
-    size_t len = (*x).size();  // offset and length of word
+  for(auto x: sortedDict) {                 // *x is the ztring representing the dictionary word
+    const uint8_t *word = (*x).data();      // byte sequence of current dictionary word
+    assert((*x).size()>0 && (*x).size()%arg.bytexsymb==0);
+    size_t len = (*x).size()/arg.bytexsymb; // length of word in symbols 
     assert(len>(size_t)arg.w || arg.compress);
     uint64_t hash = kr_hash(*x);
     auto& wf = wfreq.at(hash);
     assert(wf.occ>0);
-    size_t s = fwrite(word,1,len, fdict);
-    if(s!=len) die("Error writing to DICT file");
+    //  write word to dictionary 
+    if(arg.bytexsymb>1 && !arg.bigEndian) {
+      // necessary to transform back the integers to littleEndian
+      fwrite_littleEndian(word,arg.bytexsymb,len,fdict);
+    }
+    else { // straight copy 
+      size_t s = fwrite(word,arg.bytexsymb,len, fdict);
+      if(s!=len) die("Error writing to DICT file");
+    }
+    // if in compress mode write len as an int32 in a separate file 
     if(arg.compress) {
-      s = fwrite(&len,4,1,fwlen);
+      size_t s = fwrite(&len,4,1,fwlen);
       if(s!=1) die("Error writing to WLEN file");
     }
+    // otherwise write a EndOfWord symbol on the same
     else {
+      assert(arg.bytexsymb==1); //\\ fix this!!!!
       if(fputc(EndOfWord,fdict)==EOF) die("Error writing EndOfWord to DICT file");
-      s = fwrite(&wf.occ,sizeof(wf.occ),1, focc);
+      size_t s = fwrite(&wf.occ,sizeof(wf.occ),1, focc);
       if(s!=1) die("Error writing to OCC file");
     }
     assert(wf.rank==0);
@@ -507,9 +496,11 @@ void writeDictOcc(Args &arg, map<uint64_t,word_stats> &wfreq, vector<const strin
   if(fclose(fdict)!=0) die("Error closing DICT file");
 }
 
+
+// remap the parse file replacing hash with rank in the sorted dictionary 
 void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq)
 {
-  // open parse files. the old parse can be stored in a single file or in multiple files
+  // open parse files. the old parse has been stored in a single file or in multiple files
   mFile *moldp = mopen_aux_file(arg.inputFileName.c_str(), EXTPARS0, arg.th);
   FILE *newp = open_aux_file(arg.inputFileName.c_str(), EXTPARSE, "wb");
 
@@ -532,9 +523,7 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq)
     assert(x.second.occ == occ[x.second.rank]);
 }
  
-
-
-
+ 
 void print_help(char** argv, Args &args) {
   cout << "Usage: " << argv[ 0 ] << " <input filename> [options]" << endl;
   cout << "  Options: " << endl
@@ -543,7 +532,7 @@ void print_help(char** argv, Args &args) {
         #ifndef NOTHREADS
         << "\t-t M\tnumber of helper threads, def. none " << endl
         #endif        
-        << "\t-c  \tdiscard redundant information" << endl
+        << "\t-c  \tdiscard overlaps and $s" << endl
         << "\t-h  \tshow help and exit" << endl
         << "\t-s  \tcompute suffix array info" << endl;
   #ifdef GZSTREAM
@@ -587,7 +576,7 @@ void parseArgs( int argc, char** argv, Args& arg ) {
         exit(1);
       }
    }
-   // the only input parameter is the file name 
+   // the only mandatory input parameter is the file name 
    if (argc == optind+1) {
      arg.inputFileName.assign( argv[optind] );
    }
@@ -618,6 +607,11 @@ void parseArgs( int argc, char** argv, Args& arg ) {
 }
 
 
+// function used to compare two ztring pointers, used to lex sort dictionary words
+static bool pztringCompare(const ztring *a, const ztring *b)
+{
+  return *a <= *b;
+}
 
 int main(int argc, char** argv)
 {
@@ -658,7 +652,7 @@ int main(int argc, char** argv)
   cout << "Parsing took: " << difftime(time(NULL),start_wc) << " wall clock seconds\n";  
   // check # distinct words
   if(totDWord>MAX_DISTINCT_WORDS) {
-    cerr << "Emergency exit! The number of distinc words (" << totDWord << ")\n";
+    cerr << "Emergency exit! The number of distinct words (" << totDWord << ")\n";
     cerr << "is larger than the current limit (" << MAX_DISTINCT_WORDS << ")\n";
     exit(1);
   }
@@ -666,13 +660,13 @@ int main(int argc, char** argv)
   // -------------- second pass  
   start_wc = time(NULL);
   // create array of dictionary words
-  vector<const string *> dictArray;
+  vector<const ztring *> dictArray;
   dictArray.reserve(totDWord);
-  // fill array
+  // fill array computing some statistics
   uint64_t sumLen = 0;
   uint64_t totWord = 0;
   for (auto& x: wordFreq) {
-    sumLen += x.second.str.size();
+    sumLen += (x.second.str.size())/arg.bytexsymb;
     totWord += x.second.occ;
     dictArray.push_back(&x.second.str);
   }
@@ -680,11 +674,11 @@ int main(int argc, char** argv)
   cout << "Sum of lenghts of dictionary words: " << sumLen << endl; 
   cout << "Total number of words: " << totWord << endl; 
   // sort dictionary
-  sort(dictArray.begin(), dictArray.end(),pstringCompare);
+  sort(dictArray.begin(), dictArray.end(),pztringCompare);
   // write plain dictionary and occ file, also compute rank for each hash 
   cout << "Writing plain dictionary and occ file\n";
   writeDictOcc(arg, wordFreq, dictArray);
-  dictArray.clear(); // reclaim memory
+  dictArray.clear(); // reclaim memory: sort order of words no longer useful 
   cout << "Dictionary construction took: " << difftime(time(NULL),start_wc) << " wall clock seconds\n";  
     
   // remap parse file
@@ -696,15 +690,26 @@ int main(int argc, char** argv)
   return 0;
 }
 
-
-// ----------- overloading << for vectors
-template <typename T>
-std::ostream& operator<< (std::ostream& out, const std::vector<T>& v) {
-  if ( !v.empty() ) {
-    out << '[';
-    for(auto i: v) out << i << " "; 
-    out << "\b]";
+// ---- reverse a byte buffer
+static void buffer_reverse(uint8_t* b, int n)
+{
+  int i,j;
+  for(i=0,j=n-1;i<j;i++,j--) {
+    uint8_t t = b[i]; b[i]=b[j]; b[j]=t;
   }
-  return out;
+}
+
+void fwrite_littleEndian(const uint8_t *b, int s, int n, FILE *f) {
+  return; //\\ fixme!!!
+}
+
+
+
+// append n bytes of b[] to the zstring w
+// used to add a new symbol to the current word
+static void ztring_append(ztring &w, uint8_t *b, int n)
+{
+  for(int i=0;i<n;i++)
+    w.push_back(b[i]);
 }
 

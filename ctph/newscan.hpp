@@ -32,7 +32,7 @@ void *mt_parse(void *dx)
 
   // prepare for parsing 
   f.seekg(d->start); // move to the beginning of assigned region
-  KR_window krw(arg->w);
+  KR_window krw(arg->w, arg->bytexsymb);
   int c; string word = ""; 
   d->skipped = d->parsed = d->words = 0;
   if(d->start==0) {
@@ -47,7 +47,7 @@ void *mt_parse(void *dx)
       d->skipped++;
       if(d->start + d->skipped == d->end + arg->w) {f.close(); return NULL;} 
       word.append(1,c);
-      uint64_t hash = krw.addchar(c);
+      uint64_t hash = krw.addsymbol(c);
       if(hash%arg->p==0 && d->skipped >= arg->w) break;
     }
     if(c==EOF) {f.close(); return NULL;} // reached EOF without finding a breaking point nothing to do   
@@ -67,7 +67,7 @@ void *mt_parse(void *dx)
       cerr << "Invalid char found in input file. Exiting...\n"; exit(1);
     }
     word.append(1,c);
-    uint64_t hash = krw.addchar(c);
+    uint64_t hash = krw.addsymbol(c);
     d->parsed++;
     if(hash%arg->p==0 && d->parsed>arg->w) {
       // end of word, save it and write its full hash to the output file
