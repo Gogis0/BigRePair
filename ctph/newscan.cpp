@@ -163,25 +163,20 @@ typedef uint32_t word_int_t;
 #define MAX_WORD_OCC (UINT32_MAX)
 typedef uint32_t occ_int_t;
 // type used to represent chars when PARSE_WORDS is defined
-//#ifdef PARSE_WORDS
+#ifdef PARSE_WORDS
 typedef uint32_t char_int_t;
-//#endif
+#endif
+// type used to represent a sequence of input symbol trasformed to chars 
+typedef vector<uint8_t> ztring; 
 
 
 // values of the wordFreq map: word, its number of occurrences, and its rank
-#ifdef PARSE_WORDS
 struct word_stats {
-  vector<char_int_t> str;
+  ztring str;
   occ_int_t occ;
   word_int_t rank=0;
 };
-#else
-struct word_stats {
-  string str;
-  occ_int_t occ;
-  word_int_t rank=0;
-};
-#endif
+
 
 // -------------------------------------------------------------
 // struct containing command line parameters and other globals
@@ -189,6 +184,8 @@ struct Args {
    string inputFileName = "";
    int w = 10;            // sliding window size and its default 
    int p = 100;           // modulus for establishing stopping w-tuples 
+   int bytexsymb = 1;     // number of bytes per symbol
+   bool bigEndian = false;// when bytexsymb>1 whether they are bigEndian or smallEndian 
    bool SAinfo = false;   // compute SA information
    bool compress = false; // parsing called in compress mode 
    int th=0;              // number of helper threads
@@ -199,50 +196,57 @@ struct Args {
 // -----------------------------------------------------------------
 // class to maintain a window in a string and its KR fingerprint
 struct KR_window {
-  int wsize;
+  int wsize;            // number of symbols in window
+  int bytexsymb;        // number of bytes per symbol
+  int wbsize;           // size of window in bytes
   uint32_t *window;
   int asize;            // alphabet size 
   const uint64_t prime = 1999999973; // slightly less that 2^31
-  uint64_t hash;
-  uint64_t tot_char;
+  uint64_t hash;        // hash of the symbols currently in window
+  uint64_t tot_symb;    // char added so far, equals symbols*bxs 
   uint64_t asize_pot;   // asize^(wsize-1) mod prime 
   
-  KR_window(int w): wsize(w) {
-    asize = 256;
-    asize_pot = 1;
-    for(int i=1;i<wsize;i++) 
-      asize_pot = (asize_pot*asize)% prime; // ugly linear-time power algorithm  
+  KR_window(int w, int bxs): wsize(w), bytexsymb(bxs) {
+    wbsize = wsize*bytexsymb;    // size of window in bytes
+    asize = 256;                 // alphabet size for bytes 
+    asize_pot = modpow(asize,wbsize-1); // power used to update hash when oldest char exit
     // alloc and clear window
-    window = new uint32_t[wsize];
+    window = new uint32_t[wbsize];
     reset();     
   }
   
-  // init window, hash, and tot_char 
-  void reset() {
-    for(int i=0;i<wsize;i++) window[i]=0;
-    // init hash value and related values
-    hash=tot_char=0;    
+  // power modulo prime 
+  uint64_t modpow(uint64_t base, uint64_t exp)
+  {
+    assert(exp>0);
+    if(exp==1) return base;
+    if(exp%2==0)
+      return modpow((base*base)%prime,exp/2);
+    else 
+      return (base*modpow((base*base)%prime,exp/2)) % prime;
   }
   
-  uint64_t addchar(uint32_t c) {
-    int k = tot_char++ % wsize;
-    // complex expression to avoid negative numbers 
-    hash += (prime - (window[k]*asize_pot) % prime); // remove window[k] contribution  
-    hash = (asize*hash + c) % prime;      //  add char i 
-    window[k]=c;
-    // cerr << get_window() << " ~~ " << window << " --> " << hash << endl;
+  // init window, hash, and tot_symb
+  void reset() {
+    for(int i=0;i<wbsize;i++) window[i]=0;
+    // init hash value and related values
+    hash=tot_symb=0;    
+  }
+  
+  // add a symbol consisting of bytexsymbol uint8's to the window
+  // update and return the hash for the resulting window  
+  uint64_t addsymbol(uint8_t *s) {
+    // compute destination of symbol's bytes inside window[]
+    int k = (tot_symb++ % wsize)*bytexsymb;
+    assert(k+bytexsymb-1<wbsize); // make sure we are inside window[]
+    for(int i=0;i<bytexsymb;i++) {
+      // complex expression to avoid negative numbers 
+      hash += (prime - (window[k]*asize_pot) % prime); // remove window[k] contribution  
+      hash = (asize*hash + s[i]) % prime;      //  add char i 
+      window[k++]=s[i];
+    }
     return hash; 
   }
-  #if 0
-  // debug only 
-  string get_window() {
-    string w = "";
-    int k = (tot_char-1) % wsize;
-    for(int i=k+1;i<k+1+wsize;i++)
-      w.append(1,window[i%wsize]);
-    return w;
-  }
-  #endif
   
   ~KR_window() {
     delete[] window;
@@ -259,21 +263,22 @@ static void save_update_word(Args& arg, string& w, map<uint64_t,word_stats>&  fr
 
 
 
-// compute 64-bit KR hash of a string 
+// compute 64-bit KR hash of a ztring 
 // to avoid overflows in 64 bit aritmethic the prime is taken < 2**55
-uint64_t kr_hash(string s) {
+uint64_t kr_hash(ztring s) {
     uint64_t hash = 0;
     //const uint64_t prime = 3355443229;     // next prime(2**31+2**30+2**27)
     const uint64_t prime = 27162335252586509; // next prime (2**54 + 2**53 + 2**47 + 2**13)
     for(size_t k=0;k<s.size();k++) {
-      int c = (unsigned char) s[k];
+      int c = s[k];
       assert(c>=0 && c< 256);
       hash = (256*hash + c) % prime;    //  add char k
     } 
     return hash; 
 }
 
-
+#if 0
+// compute a KR hash for the sequence of integers stored in vector s
 uint64_t kr_hash(vector<char_int_t> s) {
     uint64_t hash = 0;
     const int size = sizeof(char_int_t);
@@ -289,20 +294,21 @@ uint64_t kr_hash(vector<char_int_t> s) {
     } 
     return hash; 
 }
+#endif
 
 
-// save current word in the freq map and update it leaving only the 
+// save current word w in the freq map and update it leaving only the 
 // last minsize chars which is the overlap with next word  
-static void save_update_word(Args& arg, string& w, map<uint64_t,word_stats>& freq, FILE *tmp_parse_file, FILE *last, FILE *sa, uint64_t &pos)
+static void save_update_word(Args& arg, zstring& w, map<uint64_t,word_stats>& freq, FILE *tmp_parse_file, FILE *last, FILE *sa, uint64_t &pos)
 {
-  size_t minsize = arg.w; 
-  assert(pos==0 || w.size() > minsize);
-  if(w.size() <= minsize) return;
-  // save overlap 
-  string overlap(w.substr(w.size() - minsize)); // keep last minsize chars
+  size_t minsize = arg.w;  // no word should be smaller than windows size 
+  assert(pos==0 || w.size() > (minsize * arg.bytexsymb));
+  if(w.size() <= minsize * arg.bytexsymb) return;
+  // save overlap consisting ot the last minsize symbols 
+  ztring overlap(w.begin() + (w.size() - minsize)*arg.bytexsymb, w.end()); 
   // if we are compressing, discard the overlap
   if(arg.compress)
-     w.erase(w.size() - minsize); // erase last minsize chars 
+     w.erase(w.begin() + (w.size() - minsize)*arg.bytexsymb, w.end()); 
   
   // get the hash value and write it to the temporary parse file
   uint64_t hash = kr_hash(w);
@@ -348,9 +354,15 @@ static void save_update_word(Args& arg, string& w, map<uint64_t,word_stats>& fre
   w.assign(overlap);
 }
 
+// append n bytes of b[] to the zstring w
+// used to add a new symbol to the current word
+void zstring_append(zstring &w, uint8_t *b, int n)
+{
+  for(int i=0;i<n;i++)
+    w.push_back(b[i]);
+}
 
-
-// prefix free parse of file fnam. w is the window size, p is the modulus 
+// prefix free parse of a file. the main input parameters are in arg 
 // use a KR-hash as the word ID that is immediately written to the parse file
 uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
 {
@@ -370,50 +382,68 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
   FILE *g = open_aux_file(arg.inputFileName.c_str(),EXTPARS0,"wb");
   FILE *sa_file = NULL, *last_file=NULL;
   if(!arg.compress) {
-    // open output file containing the char at position -(w+1) of each word
+    // open output file containing the symbol at position -(w+1) of each word
     last_file = open_aux_file(arg.inputFileName.c_str(),EXTLST,"wb");  
     // if requested open file containing the ending position+1 of each word
     if(arg.SAinfo) 
       sa_file = open_aux_file(arg.inputFileName.c_str(),EXTSAI,"wb");
   }
   
-  
-  // main loop on the chars of the input file
-  int c;
+  // init buffers containing a single symbol 
+  assert(arg.bytexsymb>0);
+  uint8_t buffer[arg.bytexsymb], dollar[arg.bytexsymb];
+  for(int=0;i<arg.bytexsymb-1;i++) dollar[i] = 0;
+   dollar[arg.bytexsymb-1] = Dollar;  // this is the generalized Dollar symbol  
+
+  // main loop on the symbols of the input file
   uint64_t pos = 0; // ending position +1 of previous word in the original text, used for computing sa_info 
   assert(IBYTES<=sizeof(pos)); // IBYTES bytes of pos are written to the sa info file 
-  // init first word in the parsing with a Dollar char unless we are just compressing
-  string word("");
-  if(!arg.compress) word.append(1,Dollar);
-  // init empty KR window: constructor only needs window size
-  KR_window krw(arg.w);
-  while( (c = f.get()) != EOF ) {
-    if(c<=Dollar && !arg.compress) {
-      // if we are not simply compressing then we cannot accept 0,1,or 2
-      cerr << "Invalid char found in input file. Exiting...\n"; exit(1);
+  // init first word in the parsing with a Dollar symbol unless we are just compressing
+  ztring word;
+  if(!arg.compress) 
+    zstring_append(word,dollar,arg.bytexsymb)
+  // init empty KR window
+  KR_window krw(arg.w,arg.bytexsymb);
+  
+  while( !f.feof() ) {
+    int e = fread(buffer,1,arg.bytexsymb,f);
+    // we must be able to read exactly arg.bytexsymb bytes otherwise the symbol is incomplete
+    if(e!=arg.bytexsymb) {
+      cerr << "Incomplete symbol at position " << pos <<" Exiting....\n"; exit(2);
     }
-    word.append(1,c);
-    uint64_t hash = krw.addchar(c);
+    // if bigEndian swap bytes as we want to compare byte sequences 
+    if(arg.bigEndian)
+      for(int i=0;j=arg.bytexsymb-1;i<j;i++,j--) {
+        uint8_t t = buffer[i]; buffer[i]=buffer[j]; buffer[j]=t;
+      }
+    // if we are not simply compressing then we cannot accept 0,1,or 2
+    if(!arg.compress && memcmp(buffer,dollar,arg.bytexsymb) <= 0) {
+      cerr << "Invalid symbol at position " << pos <<" Exiting...\n"; exit(1);
+    }
+    // add new symbol to curret word and check is we reached a splitting point 
+    zstring_append(word,buffer,arg.bytexsymb);
+    uint64_t hash = krw.addsymbol(buffer);
     if(hash%arg.p==0) {
       // end of word, save it and write its full hash to the output file
-      // cerr << "~"<< c << "~ " << hash << " ~~ <" << word << "> ~~ <" << krw.get_window() << ">" <<  endl;
       save_update_word(arg,word,wordFreq,g,last_file,sa_file,pos);
     }    
   }
   // virtually add w null chars at the end of the file and add the last word in the dict
-  word.append(arg.w,Dollar);
+  for(int i=0;i<arg.w;i++)
+    zstring_append(word,dollar,arg.bytexsymb);
   save_update_word(arg,word,wordFreq,g,last_file,sa_file,pos);
+
   // close input and output files 
   if(sa_file) if(fclose(sa_file)!=0) die("Error closing SA file");
   if(last_file) if(fclose(last_file)!=0) die("Error closing last file");  
   if(fclose(g)!=0) die("Error closing parse file");
   if(arg.compress)
-    assert(pos==krw.tot_char);
+    assert(pos==krw.tot_symb);
   else 
-    assert(pos==krw.tot_char+arg.w);
+    assert(pos==krw.tot_symb+arg.w);
   // if(pos!=krw.tot_char+arg.w) cerr << "Pos: " << pos << " tot " << krw.tot_char << endl;
   f.close();
-  return krw.tot_char;
+  return krw.tot_symb;
 }
 
 // function used to compare two string pointers
@@ -421,6 +451,13 @@ bool pstringCompare(const string *a, const string *b)
 {
   return *a <= *b;
 }
+
+// function used to compare two ztring pointers
+bool pstringCompare(const ztring *a, const ztring *b)
+{
+  return *a <= *b;
+}
+
 
 // given the sorted dictionary and the frequency map write the dictionary and occ files
 // also compute the 1-based rank for each hash
@@ -657,5 +694,17 @@ int main(int argc, char** argv)
   cout << "Remapping parse file took: " << difftime(time(NULL),start_wc) << " wall clock seconds\n";  
   cout << "==== Elapsed time: " << difftime(time(NULL),start_main) << " wall clock seconds\n";        
   return 0;
+}
+
+
+// ----------- overloading << for vectors
+template <typename T>
+std::ostream& operator<< (std::ostream& out, const std::vector<T>& v) {
+  if ( !v.empty() ) {
+    out << '[';
+    for(auto i: v) out << i << " "; 
+    out << "\b]";
+  }
+  return out;
 }
 
