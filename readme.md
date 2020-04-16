@@ -17,7 +17,7 @@ Note that `bigrepair` is a Python script so you need at least Python 3.4 install
 
 ## Sample usage
 
-The only requirement for the input file is that it does not contain the characters 0x00, 0x01, and 0x02 which are used internally by the CTPH parser. To build a grammar for file *yeast.fasta* just type
+To build a grammar for file *yeast.fasta* just type
 
        bigrepair yeast.fasta
 
@@ -32,8 +32,9 @@ this command will read the yeast.fasta.C and yeast.fasta.R files and produce a y
 The CTPH parsing step has limited support for multiple threads. Use `bigrepair` option `-t` to specify the number of helper threads: in our tests `-t 8` reduced the running time of the parsing step by roughly a factor 6. 
 
 For very large input files (or not so large but without many repetitions), RePair may run out of memory and crash. In this case use option `-m` to limit RePair RAM usage
+ 
 
 ## References
 
-\[1\] Travis Gagie, Tomohiro I, Giovanni Manzini, Gonzalo Navarro, Hiroshi Sakamoto, Yoshimasa Takabatake: *Rpair: Rescaling RePair with Rsync*. [CoRR abs/1906.00809](https://arxiv.org/abs/1906.00809) (2019)
+\[1\] Travis Gagie, Tomohiro I, Giovanni Manzini, Gonzalo Navarro, Hiroshi Sakamoto, Yoshimasa Takabatake: *Rpair: Rescaling RePair with Rsync*. [Proc. SPIRE '19](https://link.springer.com/chapter/10.1007%2F978-3-030-32686-9_3) [CoRR abs/1906.00809](https://arxiv.org/abs/1906.00809) (2019)
 

@@ -5,7 +5,7 @@
 // a unique terminator after each string
 // the values used for unique terminators are 256, 257, and so on ... 
 // this version uses the new (Spire'19) dictionary format where 
-// the length of dictionary string is provided in a separate .len file
+// the lengths of dictionary strings are provided in a separate .len file
 // in int32_t integers. 
 
 int main (int argc, char **argv)
