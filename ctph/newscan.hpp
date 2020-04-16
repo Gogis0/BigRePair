@@ -36,7 +36,7 @@ void *mt_parse(void *dx)
   dollar[arg->bytexsymb-1] = Dollar;  // this is the generalized Dollar symbol  
 
   // prepare for parsing 
-  f.seekg(d->start); // move to the beginning of assigned region
+  f.seekg(d->start*arg->bytexsymb); // move to the beginning of assigned region
   d->skipped = d->parsed = d->words = 0;
   
   // init empty KR window
@@ -48,40 +48,39 @@ void *mt_parse(void *dx)
     if(!arg->compress) 
       ztring_append(word,dollar,arg->bytexsymb);
   }
-  else {   // reach the next breaking window 
+  else {   // skip some symbol to reach the next breaking window 
     while( true ) {
       f.read((char *)buffer,arg->bytexsymb);
-      // we must be able to read exactly arg.bytexsymb bytes otherwise the symbol is incomplete
+      // if we could not read arg->bytexsymb, it is eof or error
       if(f.gcount()!=arg->bytexsymb) {
-        if(f.gcount()==0) break;
-        else {cerr << "Incomplete symbol at position " << d->start + d->skipped <<" Exiting....\n"; exit(2);}
+        if(f.gcount()==0) {
+          if(f.eof()) break;
+          else {cerr << "Invalid read at position " << d->start + d->skipped <<" Exiting....\n"; exit(1);}
+        }
+        else {cerr << "Incomplete symbol at position " << d->start + d->skipped <<" Exiting....\n"; exit(1);}
       }
-      // if not bigEndian swap bytes as we want to compare byte sequences 
+      // if not bigEndian swap bytes as we compare byte sequences 
       if(arg->bytexsymb>1 && !arg->bigEndian)
         buffer_reverse(buffer,arg->bytexsymb);
-        
       // if we are not simply compressing then we cannot accept 0,1,or 2
       if(!arg->compress && memcmp(buffer,dollar,arg->bytexsymb) <= 0) {
         cerr << "Invalid symbol at position " << d->start + d->skipped <<" Exiting...\n"; exit(1);
       }
       d->skipped++;
       if(d->start + d->skipped == d->end + arg->w) {f.close(); return NULL;} 
-      // add new symbol to curret word and check is we reached a splitting point 
+      // add new symbol to current word and check if we reached a splitting point 
       ztring_append(word,buffer,arg->bytexsymb);
       uint64_t hash = krw.addsymbol(buffer);
       if(hash%arg->p==0 && d->skipped >= arg->w) break;
     }
-    if(f.eof()) {f.close(); return NULL;} // reached EOF without finding a breaking point nothing to do
-    else die("Error reading from input file (mt_parse)");
     d->parsed = arg->w;   // the kr-window is part of the next word
     d->skipped -= arg->w; // ... so w less chars have been skipped
     // keep only the last w chars 
-    word.erase(word.begin(),word.begin() + (word.size() - arg->w)*arg->bytexsymb);
+    word.erase(word.begin(),word.begin() + (word.size() - arg->w*arg->bytexsymb));
   }
   // cout << "Skipped: " << d->skipped << endl;
-
   
-  // there is some parsing to do
+  // there is some actual parsing to do
   uint64_t pos = d->start;             // ending position+1 in text of previous word
   if(pos>0) pos+= d->skipped+ arg->w;  // or 0 for the first word  
   if(arg->SAinfo) assert(IBYTES<=sizeof(pos)); // IBYTES bytes of pos are written to the sa info file 
@@ -90,8 +89,8 @@ void *mt_parse(void *dx)
     f.read((char *)buffer,arg->bytexsymb);
     // we must be able to read exactly arg.bytexsymb bytes otherwise the symbol is incomplete
     if(f.gcount()!=arg->bytexsymb) {
-      if(f.gcount()==0)  break;
-      else {cerr << "Incomplete symbol at position " << pos <<" Exiting....\n"; exit(2);}
+      if(f.gcount()==0) break;
+      else {cerr << "Incomplete symbol at position " << pos <<" Exiting....\n"; exit(1);}
     }
     // if not bigEndian swap bytes as we want to compare byte sequences 
     if(arg->bytexsymb>1 && !arg->bigEndian)
@@ -135,8 +134,12 @@ uint64_t mt_process_file(Args& arg, map<uint64_t,word_stats>& wf)
     throw new std::runtime_error("Cannot open input file " +arg.inputFileName);
   }
   long size = f.tellg();
-  f.close();   
-
+  f.close();
+  // check size and trasform it to symbol units 
+  if(size%arg.bytexsymb!=0) 
+    throw new std::runtime_error("Input file size not multiple of symbol size");
+  size = size/arg.bytexsymb;
+    
   // prepare and execute threads 
   assert(arg.th>0);
   pthread_t t[arg.th];
@@ -160,7 +163,7 @@ uint64_t mt_process_file(Args& arg, map<uint64_t,word_stats>& wf)
   }
   
   // wait for the threads to finish (in order) and close output files
-  long tot_char=0;
+  long tot_symb=0;
   for(int i=0;i<arg.th;i++) {
     xpthread_join(t[i],NULL,__LINE__,__FILE__);
     if(arg.verbose) {
@@ -174,11 +177,11 @@ uint64_t mt_process_file(Args& arg, map<uint64_t,word_stats>& wf)
     if(td[i].words>0) {
       // extra check
       assert(td[i].parsed>arg.w);
-      tot_char += td[i].parsed - (i!=0? arg.w: 0); //parsed - overlapping 
+      tot_symb += td[i].parsed - (i!=0? arg.w: 0); //parsed - overlapping 
     }
     else assert(i>0); // the first thread must produce some words
   }
-  assert(tot_char==size);
+  assert(tot_symb==size);
   return size;   
 }
 

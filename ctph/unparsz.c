@@ -14,6 +14,7 @@
 // -------------------------------------------------------------
 // struct containing command line parameters and other globals
 typedef struct {
+   int  bytexsymb;
    char *basename;
    char *outname;
 } Args;
@@ -26,7 +27,7 @@ static void print_help(char *name)
   puts("ie files ."EXTDICZ" ."EXTDZLEN" and ."EXTPARSE);
   puts("  Options:");
   puts("\t-o outfile   output file (def. <basename>.out)");
-  puts("\t-w wsize     window size (def. 10)");
+  puts("\t-b bytes     number of bytes x symbol (def. 1)");
   puts("\t-h           show help and exit");
   exit(1);
 }
@@ -41,11 +42,14 @@ static void parseArgs(int argc, char** argv, Args *arg ) {
     printf(" %s",argv[i]);
   puts("\n");
 
+  arg->bytexsymb = 1;
   arg->outname = NULL;
-  while ((c = getopt( argc, argv, "ho:") ) != -1) {
+  while ((c = getopt( argc, argv, "ho:b:") ) != -1) {
     switch(c) {
       case 'o':
       arg->outname = strdup(optarg); break;
+      case 'b':
+      arg->bytexsymb = atoi(optarg); break;
       case 'h':
          print_help(argv[0]); exit(1);
       case '?':
@@ -53,7 +57,7 @@ static void parseArgs(int argc, char** argv, Args *arg ) {
       exit(1);
     }
   }
-  // read base name as the only non-option parameter   
+  // base name is the only non-optional parameter   
   if (argc!=optind+1) 
     print_help(argv[0]);
   arg->basename = strdup(argv[optind]);
@@ -91,7 +95,7 @@ int main(int argc, char *argv[])
   Dict = mmap_fd(dict_fd,&n);
   if(close(dict_fd)!=0) die("error closing dictionary file");
 
-  // compute # words, and save starting points
+  // compute # words, and compute starting points of words in dictionary from their length
   int wlen_fd = fd_open_aux_file(arg.basename,EXTDZLEN,O_RDONLY);
   long size = lseek(wlen_fd, 0, SEEK_END); // move to end of gile and get position
   assert(size%4==0); 
@@ -100,14 +104,14 @@ int main(int argc, char *argv[])
   if(Wstart==NULL) die("Allocation error");
   Wstart[0] = 0; // first word starts at Dict[0]
   lseek(wlen_fd,0,SEEK_SET);     // rewind 
+  // read entire length file into the Wstart array from Wstart[1] 
   ssize_t r = read(wlen_fd,Wstart+1,4*words); // assume word lengths are 4 bytes
   if(r!=4*words) die("error reading from wlen file"); 
   for(long i=2;i<=words;i++)    // Wstart[i] is starting position of word i
     Wstart[i] += Wstart[i-1];   // Wstart[i+1]-1 is ending position of word i
   
   
-  // === check starting from here 
-  
+  // recovering file 
   fprintf(stderr,"Found %ld dictionary words\n",words);
   fprintf(stderr,"Recovering file %s\n",arg.outname);
   // create output file reading word id's from the parse
@@ -121,8 +125,9 @@ int main(int argc, char *argv[])
     if(e==0 && feof(parse)) break; // done
     if(e!=1) die("Error reading parse file");
     if(w==0 || w>words) die("Invalid word ID in the parse file");
-    s = Dict + Wstart[w-1]; // dictionary word starting position 
-    e = fwrite(s,1,Wstart[w]-Wstart[w-1],f);
+    // compute starting position in the Dictionary of next word
+    s = Dict + Wstart[w-1]*arg.bytexsymb; 
+    e = fwrite(s,arg.bytexsymb,Wstart[w]-Wstart[w-1],f);
     if(e!=Wstart[w]-Wstart[w-1]) die("Error writing to the output file"); 
   }
   fclose(parse);

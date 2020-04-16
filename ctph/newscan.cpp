@@ -315,13 +315,14 @@ uint64_t kr_hash(ztring s) {
 static void save_update_word(Args& arg, ztring& w, map<uint64_t,word_stats>& freq, FILE *tmp_parse_file, FILE *last, FILE *sa, uint64_t &pos)
 {
   size_t minsize = arg.w;  // no word should be smaller than windows size 
+  assert(w.size()%arg.bytexsymb==0); 
   assert(pos==0 || w.size() > (minsize * arg.bytexsymb));
   if(w.size() <= minsize * arg.bytexsymb) return;
   // save overlap consisting ot the last minsize symbols 
-  ztring overlap(w.begin() + (w.size() - minsize)*arg.bytexsymb, w.end()); 
+  ztring overlap(w.begin() + (w.size() - minsize*arg.bytexsymb), w.end()); 
   // if we are compressing, discard the overlap
   if(arg.compress)
-     w.erase(w.begin() + (w.size() - minsize)*arg.bytexsymb, w.end()); 
+     w.erase(w.begin() + (w.size() - minsize*arg.bytexsymb), w.end()); 
   
   // get the hash value and write it to the temporary parse file
   uint64_t hash = kr_hash(w);
@@ -352,19 +353,22 @@ static void save_update_word(Args& arg, ztring& w, map<uint64_t,word_stats>& fre
   xpthread_mutex_unlock(&map_mutex,__LINE__,__FILE__);
 #endif
   if(arg.compress) 
-    pos += w.size(); // if compressing, just update position 
-  else {
-    // update last/sa files  
-    // output char w+1 from the end
-    if(fputc(w[w.size()- minsize-1],last)==EOF) die("Error writing to .last file");
-    // compute ending position +1 of current word and write it to sa file 
+    pos += w.size()/arg.bytexsymb; // if compressing, just update position 
+  else { // update last/sa files  
+    // ---- output symbol w+1 from the end to last file 
+    assert((int) w.size() >= (arg.w+1)*arg.bytexsymb);
+    // get pointer to the first byte of the symbol w+1 from the end
+    const uint8_t *b = w.data() +(w.size()- arg.w -1)*arg.bytexsymb;
+    fwrite_littleEndian(b,arg.bytexsymb,1,last);
+    // --- compute ending position +1 of current word and write it to sa file 
     // pos is the ending position+1 of the previous word and is updated here 
-    if(pos==0) pos = w.size()-1; // -1 is for the initial $ of the first word
-    else pos += w.size() -minsize; 
+    if(pos==0) pos = w.size()/arg.bytexsymb-1; // -1 is for the initial $ of the first word
+    else pos += w.size()/arg.bytexsymb -minsize; 
     if(sa) if(fwrite(&pos,IBYTES,1,sa)!=1) die("Error writing to sa info file");
   } 
   // keep only the overlapping part of the window
   w.assign(overlap.begin(),overlap.end());
+  assert((int)w.size()==arg.w*arg.bytexsymb);
 }
 
 // prefix free parse of a file. the main input parameters are in arg 
@@ -413,18 +417,17 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
     f.read((char *)buffer,arg.bytexsymb);
     // we must be able to read exactly arg.bytexsymb bytes otherwise the symbol is incomplete
     if(f.gcount()!=arg.bytexsymb) {
-      if(f.gcount()==0)  break;
-      else {cerr << "Incomplete symbol at position " << pos <<" Exiting....\n"; exit(2);}
+      if(f.gcount()==0) break;
+      else {cerr << "Incomplete symbol at position " << pos <<" Exiting....\n"; exit(1);}
     }
-    // if not bigEndian swap bytes as we want to compare byte sequences 
+    // if not bigEndian swap bytes as we compare byte sequences 
     if(arg.bytexsymb>1 && !arg.bigEndian)
-      buffer_reverse(buffer,arg.bytexsymb);
-      
+      buffer_reverse(buffer,arg.bytexsymb);      
     // if we are not simply compressing then we cannot accept 0,1,or 2
     if(!arg.compress && memcmp(buffer,dollar,arg.bytexsymb) <= 0) {
       cerr << "Invalid symbol at position " << pos <<" Exiting...\n"; exit(1);
     }
-    // add new symbol to current word and check is we reached a splitting point 
+    // add new symbol to current word and check if we reached a splitting point 
     ztring_append(word,buffer,arg.bytexsymb);
     uint64_t hash = krw.addsymbol(buffer);
     if(hash%arg.p==0) {
@@ -443,8 +446,10 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
   if(sa_file) if(fclose(sa_file)!=0) die("Error closing SA file");
   if(last_file) if(fclose(last_file)!=0) die("Error closing last file");  
   if(fclose(g)!=0) die("Error closing parse file");
-  if(arg.compress)
+  if(arg.compress) {
+    if(pos!=krw.tot_symb) cerr << "pos: " << pos <<" tot_symb " << krw.tot_symb << endl;
     assert(pos==krw.tot_symb);
+  }
   else 
     assert(pos==krw.tot_symb+arg.w);
   // if(pos!=krw.tot_char+arg.w) cerr << "Pos: " << pos << " tot " << krw.tot_char << endl;
@@ -549,7 +554,7 @@ void print_help(char** argv, Args &args) {
   cout << "  Options: " << endl
         << "\t-w W\tsliding window size, def. " << args.w << endl
         << "\t-p M\tmodulo for defining phrases, def. " << args.p << endl
-        << "\t-b B\tnumber of byte x symbol, def. " << args.bytexsymb << endl
+        << "\t-b B\tnumber of bytes x symbol, def. " << args.bytexsymb << endl
         << "\t-g  \tsymbols are in bigEndian format, def No" << endl
         #ifndef NOTHREADS
         << "\t-t T\tnumber of helper threads, def. none " << endl
@@ -711,7 +716,10 @@ int main(int argc, char** argv)
   // sort dictionary
   sort(dictArray.begin(), dictArray.end(),pztringCompare);
   // write plain dictionary and occ file, also compute rank for each hash 
-  cout << "Writing plain dictionary and occ file\n";
+  if(arg.compress)
+    cout << "Writing plain dictionary and len file\n";
+  else
+    cout << "Writing plain dictionary and occ file\n";
   writeDictOcc(arg, wordFreq, dictArray);
   dictArray.clear(); // reclaim memory: sort order of words no longer useful 
   cout << "Dictionary construction took: " << difftime(time(NULL),start_wc) << " wall clock seconds\n";  
