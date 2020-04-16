@@ -126,6 +126,19 @@
  * From the above three files it is possible to recover the original input
  * using the unparsz tool.
  * 
+ * 
+ * *** Usage of alphabets larger than 256 ***
+ * 
+ * The -b B command line option -b makes it possible to use symbols consisting of B bytes
+ * The size of the input file must be a multiple of B. The algorithm will produce 
+ * a dictionary consisting of words made of B-byte symbol; the dictionalry will still be
+ * lexicographically sorted. The program will assume that the bytes inside each symbol
+ * are in Little Endian format, unless the -g command line option is used.  
+ * Note that the length of the input and of the dictionary words will be 
+ * expressed in symbols.
+ * The -b option is supported for both compression mode and BWT construction
+ * but at the moment the other stages of BWT construction do not support 
+ * alphabets larger than 256
  */
 #include <assert.h>
 #include <errno.h>
@@ -199,7 +212,7 @@ struct KR_window {
   int wsize;            // number of symbols in window
   int bytexsymb;        // number of bytes per symbol
   int wbsize;           // size of window in bytes
-  uint32_t *window;
+  uint8_t *window;
   int asize;            // alphabet size 
   const uint64_t prime = 1999999973; // slightly less that 2^31
   uint64_t hash;        // hash of the symbols currently in window
@@ -211,7 +224,7 @@ struct KR_window {
     asize = 256;                 // alphabet size for bytes 
     asize_pot = modpow(asize,wbsize-1); // power used to update hash when oldest char exit
     // alloc and clear window
-    window = new uint32_t[wbsize];
+    window = new uint8_t[wbsize];
     reset();     
   }
   
@@ -255,6 +268,14 @@ struct KR_window {
 };
 // -----------------------------------------------------------
 
+// ---- append n bytes of b[] to the zstring w; used to add a new symbol to the current word
+static void ztring_append(ztring &w, uint8_t *b, int n);
+// ---- reverse a byte buffer
+static void buffer_reverse(uint8_t* b, int n);
+// ---- transform integers to littelEndian anb write them to file
+void fwrite_littleEndian(const uint8_t *b, int s, int n, FILE *f); 
+// ---- process a compete word
+static void save_update_word(Args& arg, ztring& w, map<uint64_t,word_stats>& freq, FILE *tmp_parse_file, FILE *last, FILE *sa, uint64_t &pos);
 
 
 #ifndef NOTHREADS
@@ -272,12 +293,6 @@ std::ostream& operator<< (std::ostream& out, const std::vector<T>& v) {
   return out;
 }
 
-// ---- append n bytes of b[] to the zstring w; used to add a new symbol to the current word
-static void ztring_append(ztring &w, uint8_t *b, int n);
-// ---- reverse a byte buffer
-static void buffer_reverse(uint8_t* b, int n);
-// ---- transform integers to littelEndian anb write them to file
-void fwrite_littleEndian(const uint8_t *b, int s, int n, FILE *f); 
 
 
 // compute 64-bit KR hash of a ztring 
@@ -381,25 +396,24 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
   
   // init buffers containing a single symbol 
   assert(arg.bytexsymb>0);
-  uint8_t buffer[arg.bytexsymb], dollar[arg.bytexsymb];
-  for(int i=0;i<arg.bytexsymb-1;i++) dollar[i] = 0;
-   dollar[arg.bytexsymb-1] = Dollar;  // this is the generalized Dollar symbol  
+  uint8_t buffer[arg.bytexsymb], dollar[arg.bytexsymb]={0};
+  dollar[arg.bytexsymb-1] = Dollar;  // this is the generalized Dollar symbol  
 
   // main loop on the symbols of the input file
   uint64_t pos = 0; // ending position +1 of previous word in the original text, used for computing sa_info 
   assert(IBYTES<=sizeof(pos)); // IBYTES bytes of pos are written to the sa info file 
+  // init empty KR window
+  KR_window krw(arg.w,arg.bytexsymb);
   // init first word in the parsing with a Dollar symbol unless we are just compressing
   ztring word;
   if(!arg.compress) 
     ztring_append(word,dollar,arg.bytexsymb);
-  // init empty KR window
-  KR_window krw(arg.w,arg.bytexsymb);
   
   while( true ) {
     f.read((char *)buffer,arg.bytexsymb);
     // we must be able to read exactly arg.bytexsymb bytes otherwise the symbol is incomplete
     if(f.gcount()!=arg.bytexsymb) {
-      if(f.gcount()==0) break;
+      if(f.gcount()==0)  break;
       else {cerr << "Incomplete symbol at position " << pos <<" Exiting....\n"; exit(2);}
     }
     // if not bigEndian swap bytes as we want to compare byte sequences 
@@ -410,7 +424,7 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
     if(!arg.compress && memcmp(buffer,dollar,arg.bytexsymb) <= 0) {
       cerr << "Invalid symbol at position " << pos <<" Exiting...\n"; exit(1);
     }
-    // add new symbol to curret word and check is we reached a splitting point 
+    // add new symbol to current word and check is we reached a splitting point 
     ztring_append(word,buffer,arg.bytexsymb);
     uint64_t hash = krw.addsymbol(buffer);
     if(hash%arg.p==0) {
@@ -418,6 +432,8 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
       save_update_word(arg,word,wordFreq,g,last_file,sa_file,pos);
     }    
   }
+  // check that we really reached the end of the file
+  if(!f.eof()) die("Error reading from input file (process_file)");
   // virtually add w null chars at the end of the file and add the last word in the dict
   for(int i=0;i<arg.w;i++)
     ztring_append(word,dollar,arg.bytexsymb);
@@ -476,11 +492,15 @@ void writeDictOcc(Args &arg, map<uint64_t,word_stats> &wfreq, vector<const ztrin
       size_t s = fwrite(&len,4,1,fwlen);
       if(s!=1) die("Error writing to WLEN file");
     }
-    // otherwise write a EndOfWord symbol on the same
+    // otherwise write a EndOfWord symbol on the same file and update occ file 
     else {
-      assert(arg.bytexsymb==1); //\\ fix this!!!!
-      if(fputc(EndOfWord,fdict)==EOF) die("Error writing EndOfWord to DICT file");
-      size_t s = fwrite(&wf.occ,sizeof(wf.occ),1, focc);
+      // create EndOfWord symbol
+      uint8_t tmp[arg.bytexsymb] = {0};
+      tmp[arg.bigEndian?arg.bytexsymb-1:0] = EndOfWord;
+      int s = fwrite(tmp,1,arg.bytexsymb,fdict); // append EndOfWord to the dictionary
+      if(s!=arg.bytexsymb) die("Error writing EndOfWord to DICT file");
+      // write number of occ of current word to focc file 
+      s = fwrite(&wf.occ,sizeof(wf.occ),1, focc);
       if(s!=1) die("Error writing to OCC file");
     }
     assert(wf.rank==0);
@@ -529,10 +549,12 @@ void print_help(char** argv, Args &args) {
   cout << "  Options: " << endl
         << "\t-w W\tsliding window size, def. " << args.w << endl
         << "\t-p M\tmodulo for defining phrases, def. " << args.p << endl
+        << "\t-b B\tnumber of byte x symbol, def. " << args.bytexsymb << endl
+        << "\t-g  \tsymbols are in bigEndian format, def No" << endl
         #ifndef NOTHREADS
-        << "\t-t M\tnumber of helper threads, def. none " << endl
+        << "\t-t T\tnumber of helper threads, def. none " << endl
         #endif        
-        << "\t-c  \tdiscard overlaps and $s" << endl
+        << "\t-c  \tdiscard overlaps and $'s" << endl
         << "\t-h  \tshow help and exit" << endl
         << "\t-s  \tcompute suffix array info" << endl;
   #ifdef GZSTREAM
@@ -552,7 +574,7 @@ void parseArgs( int argc, char** argv, Args& arg ) {
   puts("");
 
    string sarg;
-   while ((c = getopt( argc, argv, "p:w:sht:vc") ) != -1) {
+   while ((c = getopt( argc, argv, "p:w:b:gsht:vc") ) != -1) {
       switch(c) {
         case 's':
         arg.SAinfo = true; break;
@@ -564,6 +586,11 @@ void parseArgs( int argc, char** argv, Args& arg ) {
         case 'p':
         sarg.assign( optarg );
         arg.p = stoi( sarg ); break;
+        case 'b':
+        sarg.assign( optarg );
+        arg.bytexsymb = stoi( sarg ); break;
+        case 'g':
+        arg.bigEndian = true; break;
         case 't':
         sarg.assign( optarg );
         arg.th = stoi( sarg ); break;
@@ -590,9 +617,17 @@ void parseArgs( int argc, char** argv, Args& arg ) {
      exit(1);
    }
    if(arg.p<10) {
-     cout << "Modulus must be at leas 10\n";
+     cout << "Modulus must be at least 10\n";
      exit(1);
    }
+   if(arg.bytexsymb<1) {
+     cout << "# bytes x symbol must be positive\n";
+     exit(1);
+   }
+   if(arg.bytexsymb==1 && arg.bigEndian) {
+     cout << "Option big Endian makes sense only if byte x symbol > 1\n";
+     exit(1);
+   } 
    #ifdef NOTHREADS
    if(arg.th!=0) {
      cout << "The NT version cannot use threads\n";
@@ -699,8 +734,24 @@ static void buffer_reverse(uint8_t* b, int n)
   }
 }
 
-void fwrite_littleEndian(const uint8_t *b, int s, int n, FILE *f) {
-  return; //\\ fixme!!!
+
+// write a block of n symbols each one taking size bytes to file f 
+// first reversing the bytes of each symbol 
+void fwrite_littleEndian(const uint8_t *b, int size, int n, FILE *f) 
+{
+  assert(size>1 && n >0);
+  uint8_t *tmp = new uint8_t[n*size];
+  
+  // each symbol takes a contiguous block of bytes
+  // with remainder 0,1,...size-1
+  // we remap them to remainder size-1,...1,0
+  for(int i=0;i<n*size;i++) 
+    tmp[(i/size)*size+(size-1-(i%size))] = b[i];
+  
+  int s = fwrite(tmp,size,n,f);
+  if(s!=n) die("Error writing to DICT file (fwrite_littleEndian");  
+  delete[] tmp; 
+  return;
 }
 
 

@@ -30,44 +30,79 @@ void *mt_parse(void *dx)
     throw new std::runtime_error("Cannot open file " + arg->inputFileName);
   }
 
+  // init buffers containing a single symbol 
+  assert(arg->bytexsymb>0);
+  uint8_t buffer[arg->bytexsymb], dollar[arg->bytexsymb]={0}; //note in c++ also {} is ok
+  dollar[arg->bytexsymb-1] = Dollar;  // this is the generalized Dollar symbol  
+
   // prepare for parsing 
   f.seekg(d->start); // move to the beginning of assigned region
-  KR_window krw(arg->w, arg->bytexsymb);
-  int c; string word = ""; 
   d->skipped = d->parsed = d->words = 0;
-  if(d->start==0) {
-    if(!arg->compress) word.append(1,Dollar); // no need to reach the next kr-window 
+  
+  // init empty KR window
+  KR_window krw(arg->w,arg->bytexsymb);
+  // current word in the parsing
+  ztring word;
+  
+  if(d->start==0) {  // no need to reach the next kr-window
+    if(!arg->compress) 
+      ztring_append(word,dollar,arg->bytexsymb);
   }
-  else {   // reach the next breaking window  
-    while( (c = f.get()) != EOF ) {
-      if(c<=Dollar && !arg->compress) {
-        // if we are not simply compressing then we cannot accept 0,1,or 2
-        cerr << "Invalid char found in input file. Exiting...\n"; exit(1);
+  else {   // reach the next breaking window 
+    while( true ) {
+      f.read((char *)buffer,arg->bytexsymb);
+      // we must be able to read exactly arg.bytexsymb bytes otherwise the symbol is incomplete
+      if(f.gcount()!=arg->bytexsymb) {
+        if(f.gcount()==0) break;
+        else {cerr << "Incomplete symbol at position " << d->start + d->skipped <<" Exiting....\n"; exit(2);}
+      }
+      // if not bigEndian swap bytes as we want to compare byte sequences 
+      if(arg->bytexsymb>1 && !arg->bigEndian)
+        buffer_reverse(buffer,arg->bytexsymb);
+        
+      // if we are not simply compressing then we cannot accept 0,1,or 2
+      if(!arg->compress && memcmp(buffer,dollar,arg->bytexsymb) <= 0) {
+        cerr << "Invalid symbol at position " << d->start + d->skipped <<" Exiting...\n"; exit(1);
       }
       d->skipped++;
       if(d->start + d->skipped == d->end + arg->w) {f.close(); return NULL;} 
-      word.append(1,c);
-      uint64_t hash = krw.addsymbol(c);
+      // add new symbol to curret word and check is we reached a splitting point 
+      ztring_append(word,buffer,arg->bytexsymb);
+      uint64_t hash = krw.addsymbol(buffer);
       if(hash%arg->p==0 && d->skipped >= arg->w) break;
     }
-    if(c==EOF) {f.close(); return NULL;} // reached EOF without finding a breaking point nothing to do   
+    if(f.eof()) {f.close(); return NULL;} // reached EOF without finding a breaking point nothing to do
+    else die("Error reading from input file (mt_parse)");
     d->parsed = arg->w;   // the kr-window is part of the next word
     d->skipped -= arg->w; // ... so w less chars have been skipped
-    word.erase(0,word.size() - arg->w);// keep only the last w chars 
+    // keep only the last w chars 
+    word.erase(word.begin(),word.begin() + (word.size() - arg->w)*arg->bytexsymb);
   }
   // cout << "Skipped: " << d->skipped << endl;
+
   
   // there is some parsing to do
   uint64_t pos = d->start;             // ending position+1 in text of previous word
   if(pos>0) pos+= d->skipped+ arg->w;  // or 0 for the first word  
   if(arg->SAinfo) assert(IBYTES<=sizeof(pos)); // IBYTES bytes of pos are written to the sa info file 
-  while( (c = f.get()) != EOF ) {
-    if(c<=Dollar && !arg->compress) {
-      // if we are not simply compressing then we cannot accept 0,1,or 2
-      cerr << "Invalid char found in input file. Exiting...\n"; exit(1);
+
+  while( true ) {
+    f.read((char *)buffer,arg->bytexsymb);
+    // we must be able to read exactly arg.bytexsymb bytes otherwise the symbol is incomplete
+    if(f.gcount()!=arg->bytexsymb) {
+      if(f.gcount()==0)  break;
+      else {cerr << "Incomplete symbol at position " << pos <<" Exiting....\n"; exit(2);}
     }
-    word.append(1,c);
-    uint64_t hash = krw.addsymbol(c);
+    // if not bigEndian swap bytes as we want to compare byte sequences 
+    if(arg->bytexsymb>1 && !arg->bigEndian)
+      buffer_reverse(buffer,arg->bytexsymb);
+    // if we are not simply compressing then we cannot accept 0,1,or 2
+    if(!arg->compress && memcmp(buffer,dollar,arg->bytexsymb) <= 0) {
+      cerr << "Invalid symbol at position " << pos <<" Exiting...\n"; exit(1);
+    }
+    // add new symbol to current word and check is we reached a splitting point 
+    ztring_append(word,buffer,arg->bytexsymb);
+    uint64_t hash = krw.addsymbol(buffer);
     d->parsed++;
     if(hash%arg->p==0 && d->parsed>arg->w) {
       // end of word, save it and write its full hash to the output file
@@ -77,9 +112,11 @@ void *mt_parse(void *dx)
       if(d->start+d->skipped+d->parsed>=d->end+arg->w) {f.close(); return NULL;}
     }    
   }
-  // end of file reached 
+  // check that we really reached the end of the file
+  if(!f.eof()) die("Error reading from input file (mt_parse)");
   // virtually add w null chars at the end of the file and add the last word in the dict
-  word.append(arg->w,Dollar);
+  for(int i=0;i<arg->w;i++)
+    ztring_append(word,dollar,arg->bytexsymb);
   save_update_word(*arg,word,*wordFreq,d->parse,d->last,d->sa,pos);
   // close input file and return 
   f.close();

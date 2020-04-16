@@ -3,8 +3,8 @@ CXX_FLAGS=-std=c++11 -O3 -Wall -Wextra -g
 CFLAGS=-O3 -Wall -std=c99 -g
 CC=gcc
 
-# main executables (temporarily removed newscan.x)
-EXECS=pscan.x unparsz unparse  
+# main executables 
+EXECS=newscan.x pscan.x unparsz unparse
 # executables not using threads (and therefore not needing the thread library)
 EXECS_NT=newscanNT.x unparsz
 
