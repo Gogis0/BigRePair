@@ -1,4 +1,4 @@
-// decompress a char-based .R .C pair
+// decompress an int-based .R .C pair
 
 /*
 
@@ -52,13 +52,11 @@ int maxdepth = 0;
 int expand (int i, int d)
 
    { int ret = 1;
-     char c;
      while (i >= alph) // while i is not a terminal expand recursively
        { ret += expand(R[i-alph].left,d+1);
          i = R[i-alph].right; d++;  // expansion on the right branch is replaced by iteration 
        }
-     c = i;
-     if (fwrite(&c,sizeof(char),1,f) != 1)
+     if (fwrite(&i,sizeof(int),1,f) != 1)
   { fprintf (stderr,"Error: cannot write file %s\n",ff);
     exit(1);
   }
@@ -66,18 +64,26 @@ int expand (int i, int d)
      return ret;
    }
 
+
+static int blog (int x)
+   { int l=0;
+     while (x) { x>>=1; l++; }
+     return l;
+   }
+
+
 int main (int argc, char **argv)
 
    { char fname[1024]; char outname[1024];
      //char *text;
      FILE *Tf,*Rf,*Cf;
-     int i,len,u;
+     int i,len,c,u;
      struct stat s;
      if (argc != 2)
   { fprintf (stderr,"Usage: %s <filename>\n"
         "Decompresses <filename> from its .C and .R "
         "extensions.\n Decompressed file is <filename>.out\n"
-        "This is a version for prefix-free parsing\n",argv[0]);
+        "This is a version for prefix-free parsing with integer symbols\n",argv[0]);
     exit(1);
   }
   
@@ -115,7 +121,7 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot stat file %s\n",fname);
     exit(1);
   }
-     len = s.st_size/sizeof(int);
+     c = len = s.st_size/sizeof(int);
      Cf = fopen (fname,"r");
      if (Cf == NULL)
   { fprintf (stderr,"Error: cannot open file %s for reading\n",fname);
@@ -132,7 +138,7 @@ int main (int argc, char **argv)
   }
   
   // actual decompression 
-     u = 0; f = Tf; 
+     u = 0; f = Tf; ff = outname;
      for (;len>0;len--)
   { if (fread(&i,sizeof(int),1,Cf) != 1)
        { fprintf (stderr,"Error: cannot read file %s\n",fname);
@@ -145,6 +151,13 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot close file %s\n",outname);
     exit(1);
   }
+     fprintf (stderr,"IDesPair succeeded\n\n");
+     fprintf (stderr,"   Original ints: %i\n",u);
+     fprintf (stderr,"   Number of rules: %i\n",n-alph);
+     fprintf (stderr,"   Compressed sequence length: %i\n",c);
+     fprintf (stderr,"   Maximum rule depth: %i\n",maxdepth);
+     fprintf (stderr,"   Compression ratio: %0.2f%%\n", 
+                        (2.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/(u*blog(alph-1))*100.0);
      return 0;
 }
 

@@ -1,5 +1,5 @@
 
-all: repair despair 
+all: repair despair idespair
 
 CFLAGS = -Wall -g -O9
 

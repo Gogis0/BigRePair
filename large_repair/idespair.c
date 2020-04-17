@@ -66,7 +66,7 @@ int expand (int i, int d)
 int main (int argc, char **argv)
 
    { char fname[1024];
-     char *text;
+     // char *text;
      FILE *Tf,*Rf,*Cf;
      int i,len,c,u;
      struct stat s;

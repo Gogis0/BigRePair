@@ -1,7 +1,7 @@
 
 EXECS = irepair
 
-# these excutalbes are not used by Rpair 
+# these excutables are not used by Repair 
 #   idespair repair despair toint 
 
 

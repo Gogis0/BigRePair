@@ -42,9 +42,12 @@ int bits (int x)
 int maxbelowUnique(FILE *f)
 {
   int i,m=0;
-  while(!feof(f)) {
+  while(1) {
     int e = fread(&i,sizeof(int),1,f);
-    die(e!=1, "Read error (maxbelowUnique)");
+    if(e!=1) {
+      die(ferror(f), "Read error (maxbelowUnique)");
+      break;
+    }  
     die(i<0,"Unexpected negative value (maxbelowUnique)");
     if(i<Unique && i>m)
       m=i;
@@ -209,7 +212,7 @@ int main (int argc, char **argv)
          fwrite(val,sizeof(int),2,R);
        }
     fclose (parseR);
-    assert(ftell(R)==(1+rules+prules)*sizeof(int));
+    assert(ftell(R)==(1+2*(rules+prules))*sizeof(int));
     
     // output .R file completed
     if (fclose(R) != 0) { 
@@ -247,7 +250,7 @@ int main (int argc, char **argv)
 
     // estimate compression 
     if(stat(argv[1],&s)!=0) {
-      fprintf(stderr,"Error stat-ing file %s\n",argv[1]);
+      fprintf(stderr,"Cannot stat file %s\n",argv[1]);
       exit(1);
     }
       
