@@ -56,7 +56,7 @@ int minsize = 256; // to avoid many reallocs at small sizes, should be ok as is
 
 int u; // |text| and later current |C| with gaps
 
-int *C; // compressed text
+int *C; // first input then compressed text
 
 int c;  // real |C|
 
@@ -77,6 +77,7 @@ void prepare (int len)
   { int i,id;
     Tpair pair;
     c = u = len;
+    // compute largest input symbol 
     alph = 0;
     for (i=0;i<u;i++) 
   { if (C[i] > alph) alph = C[i];
@@ -300,6 +301,7 @@ int main (int argc, char **argv)
       argv[0]);
     exit(1);
   }
+  // read input sequence from argv[1] and store it to C[] 
      if (stat (argv[1],&s) != 0)
   { fprintf (stderr,"Error: cannot stat file %s\n",argv[1]);
     exit(1);

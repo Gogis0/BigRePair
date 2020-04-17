@@ -13,11 +13,10 @@ typedef struct
 
 int u; // |text| and later current |C| with gaps
 
-int *C; // compressed text
+// int *C; // compressed text
+// int c;  // real |C|
 
-int c;  // real |C|
-
-int alph; // max used terminal symbol
+int alph; // size of terminal alphabet, or smallest non terminal symbol
 
 Tpair *R; // rules
 
@@ -31,25 +30,25 @@ int expand (int i, int d)
 
    { int ret = 1;
      char c;
-     while (i >= alph)
+     while (i >= alph) // while i is not a terminal expand recursively
        { ret += expand(R[i-alph].left,d+1);
-         i = R[i-alph].right; d++;
+         i = R[i-alph].right; d++;  // expansion on the right branch is replaced by iteration 
        }
      c = i;
      if (fwrite(&c,sizeof(char),1,f) != 1)
   { fprintf (stderr,"Error: cannot write file %s\n",ff);
     exit(1);
   }
-     if (d > maxdepth) maxdepth = d;
+     if (d > maxdepth) maxdepth = d;// keep track of max depth, but it is not reported
      return ret;
    }
 
-void main (int argc, char **argv)
+int main (int argc, char **argv)
 
    { char fname[1024]; char outname[1024];
-     char *text;
+     //char *text;
      FILE *Tf,*Rf,*Cf;
-     int i,len,c,u;
+     int i,len,u;
      struct stat s;
      if (argc != 2)
   { fprintf (stderr,"Usage: %s <filename>\n"
@@ -58,6 +57,8 @@ void main (int argc, char **argv)
         "This is a version for prefix-free parsing\n",argv[0]);
     exit(1);
   }
+  
+  // read .R file, store data in alpha and R[]
      strcpy(fname,argv[1]);
      strcat(fname,".R");
      if (stat (fname,&s) != 0)
@@ -74,7 +75,9 @@ void main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot read file %s\n",fname);
     exit(1);
   }
+     // n is the number of rules, sizeof(int) accounts for alpha
      n = (len-sizeof(int))/sizeof(Tpair);
+     // allocate and reads array of rules stored as pairs 
      R = (void*)malloc(n*sizeof(Tpair));
      if (fread(R,sizeof(Tpair),n,Rf) != n)
   { fprintf (stderr,"Error: cannot read file %s\n",fname);
@@ -82,20 +85,21 @@ void main (int argc, char **argv)
   }
      fclose(Rf);
 
+   // open C file and get the nuber of symbols in it 
      strcpy(fname,argv[1]);
      strcat(fname,".C");
      if (stat (fname,&s) != 0)
   { fprintf (stderr,"Error: cannot stat file %s\n",fname);
     exit(1);
   }
-     c = len = s.st_size/sizeof(int);
+     len = s.st_size/sizeof(int);
      Cf = fopen (fname,"r");
      if (Cf == NULL)
   { fprintf (stderr,"Error: cannot open file %s for reading\n",fname);
     exit(1);
   }
 
-
+  // open output file
      strcpy(outname,argv[1]);
      strcat(outname,".out");
      Tf = fopen (outname,"w");
@@ -103,19 +107,21 @@ void main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot open file %s for writing\n",outname);
     exit(1);
   }
+  
+  // actual decompression 
      u = 0; f = Tf; 
      for (;len>0;len--)
   { if (fread(&i,sizeof(int),1,Cf) != 1)
        { fprintf (stderr,"Error: cannot read file %s\n",fname);
          exit(1);
        }
-    u += expand(i,0);
+    u += expand(i,0); // expand non terminal i, 0 is initial depth 
   }
      fclose(Cf);
      if (fclose(Tf) != 0)
   { fprintf (stderr,"Error: cannot close file %s\n",outname);
     exit(1);
   }
-     exit(0);
-   }
+     return 0;
+}
 
