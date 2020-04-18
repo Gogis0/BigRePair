@@ -11,8 +11,8 @@
  *   newscan.x wsize modulus file
  * 
  * Unless the parameter -c (compression rather than BWT construction,
- * see "Compression mode" below) the input file cannot contain 
- * the characters 0x0, 0x1, 0x2 which are used internally. 
+ * see "Compression mode" below) is given, the input file cannot contain 
+ * the characters 0x0, 0x1, 0x2 which are used internally for BWT construction 
  * 
  * Since the i-th thread accesses the i-th segment of the input file 
  * random access (fseek) must be possible. For gzipped inputs use 
@@ -358,8 +358,15 @@ static void save_update_word(Args& arg, ztring& w, map<uint64_t,word_stats>& fre
     // ---- output symbol w+1 from the end to last file 
     assert((int) w.size() >= (arg.w+1)*arg.bytexsymb);
     // get pointer to the first byte of the symbol w+1 from the end
-    const uint8_t *b = w.data() +(w.size()- arg.w -1)*arg.bytexsymb;
-    fwrite_littleEndian(b,arg.bytexsymb,1,last);
+    const uint8_t *b = w.data() + w.size()- (arg.w +1)*arg.bytexsymb;
+    if(arg.bytexsymb>1 && !arg.bigEndian) {
+      // necessary to transform back the integers to littleEndian
+      fwrite_littleEndian(b,arg.bytexsymb,1,last);
+    }
+    else { // straight copy 
+      size_t s = fwrite(b,arg.bytexsymb,1, last);
+      if(s!=1) die("Error writing to LAST file");
+    }
     // --- compute ending position +1 of current word and write it to sa file 
     // pos is the ending position+1 of the previous word and is updated here 
     if(pos==0) pos = w.size()/arg.bytexsymb-1; // -1 is for the initial $ of the first word
@@ -747,7 +754,7 @@ static void buffer_reverse(uint8_t* b, int n)
 // first reversing the bytes of each symbol 
 void fwrite_littleEndian(const uint8_t *b, int size, int n, FILE *f) 
 {
-  assert(size>1 && n >0);
+  assert(size>1 && n>0);
   uint8_t *tmp = new uint8_t[n*size];
   
   // each symbol takes a contiguous block of bytes

@@ -15,19 +15,19 @@ Prefix-free parsing + Repair compression
   decompresses file.C and file.R to file.out          
 """
 
-# path of auxiliaty tools
+# path of the auxiliary tools
 # ctph parsing 
 parse_exe = "ctph/pscan.x"
 iparse_exe = "ctph/newscan.x"
 parseNT_exe = "ctph/newscanNT.x"
 # repair: plain and with memory constraint (symbols are integers in both tools) 
-repair_exe = "myrepair/irepair"
+repair_exe = "repair/irepair"
 largerepair_exe = "large_repair/irepair"
-# despair (symbols are chars)
-despair_exe = "myrepair/despair"
-# despair for integer symbols 
-integer_despair_exe = "myrepair/idespair"
-# preprocess dict into a sequence on int32 representing both chars and distinct EOS 
+# despair for byte symbols 
+despair_exe = "repair/despair"
+# despair for int32 symbols 
+integer_despair_exe = "repair/idespair"
+# preprocess dict into a sequence of int32 representing both chars and distinct EOS 
 preprocess_exe = "procdic"
 integer_preprocess_exe = "iprocdic"
 # create final output file

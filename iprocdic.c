@@ -19,6 +19,10 @@
 // the lengths (in symbols) of dictionary strings are provided in a 
 // separate .len file in int32_t integers. 
 
+// this is the first symbol used as a separator; all input symbols must 
+// be smaller than it. Unique can be made larger, but all unique 
+// separators must be smaller tham 2^{31}  (this is checked in the code)
+// if Unique is changed here it MUST be changed also in ipostproc.c
 #define Unique (1<<30)
 
 
@@ -79,7 +83,9 @@ int main (int argc, char **argv)
     }
     e = fwrite (&n,sizeof(int),1,fo); // write terminator as an int to output file 
     if(e!=1) {perror("Error writing to .int file"); exit(1); }
-    n++; // update terminator 
+    if(++n < 0) {// update separator and check it is still valid 
+      fprintf(stderr,"No more valid separator symbol. Exiting...\n"); exit(1);
+    }
   }
   c = getc(fi); // there should be no further chars
   if(c!=EOF) {perror("Unexpected trailing chars in dictionary"); exit(1); }
