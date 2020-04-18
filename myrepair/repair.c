@@ -353,10 +353,11 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot close file %s\n",fname);
     exit(1);
   }
-  
+     // see ipostproc.c for the explanation of the est_size formula 
+     // (note here n = rules+alpha)
      // size in bytes of the compact representation  
      long est_size = (long) ( (2*(n-alph)+((n-alph)+c)*(long)blog(n-1))/8) + 1;  
-     fprintf (stderr,"RePair succeeded\n");
+     fprintf (stderr,"IRePair succeeded\n");
      fprintf (stderr,"   Original ints: %i\n",len);
      fprintf (stderr,"   Number of rules: %i\n",n-alph);
      fprintf (stderr,"   Final sequence length: %i\n",c);

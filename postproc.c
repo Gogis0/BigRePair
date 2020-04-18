@@ -1,3 +1,8 @@
+// postproc.c
+//
+// Intermediate tool for bigRepair for integers 
+// combines a RePair compression for the dictionary and the parse into
+// a RePair compression for the original input
 
 // file.dicz.R contains rules for dictionary words, first int is # of terminals
 // file.dicz.C contains the sequences, separated by terminals >= 256
@@ -27,7 +32,7 @@ int bits (int x)
      return l;
    }
 
-void main (int argc, char **argv)
+int main (int argc, char **argv)
 
   { FILE *diczR,*diczC,*parseR,*parseC,*R,*C;
     char fname[1024];
@@ -38,7 +43,7 @@ void main (int argc, char **argv)
     int psizeC; // size of parseC
     int phrases; // how many phrases in dicz = terminals in parseR
     struct stat s;
-    int v256 = 256;
+    int v256 = 256; // upper bound on the size of the input alphabet
     int i,p,e;
     int val[2];
     int *AdiczC; // to read diczC in memory
@@ -58,8 +63,8 @@ void main (int argc, char **argv)
 
   // open all *R files and read basic data from them
 
-    sprintf(fname,"%s.R",argv[1]);
-    R = fopen(fname,"w");
+    sprintf(fname,"%s.R",argv[1]); 
+    R = fopen(fname,"w"); // output .R file
     if (R == NULL)
        { fprintf (stderr, "Cannot open %s\n",fname);
    exit(1);
@@ -197,15 +202,33 @@ void main (int argc, char **argv)
        }
     free (transl);
     fclose (parseC);
-    if (fclose(C) != 0)
-       { fprintf (stderr,"Cannot close %s.C\n",argv[1]);
-   exit(1);
-       }
-
-    stat(argv[1],&s);
-    rules += prules;
-    long est_size = (long) ( (2.0*rules+((double)bits(256+rules))*(rules+psizeC))/8 ) +1;
+    if (fclose(C) != 0){ 
+      fprintf (stderr,"Cannot close %s.C\n",argv[1]); exit(1);
+    }
     fprintf(stderr,"Prefix-Free + Repair succeeded\n");
+
+    // get orginal size by measuring number of bytes in the original input
+    if(stat(argv[1],&s)!=0) {
+      fprintf(stderr,"Cannot stat original input file %s\n",argv[1]);
+      fprintf(stderr,"Compression ratio estimate not available\n");
+      fprintf(stdout,"  Estimated output size (stdout): NaN\n"); // don't change this: est_size must be the the last printed item 
+      exit(2);
+    }
+
+    // estimate compression
+    // the estimate of the output size is done assuming we use
+    // a complete binary tree with 2r nodes to encode r rules.
+    // So we have:
+    //  1 bit per node (total 2r bits) to describe the shape of the binary tree
+    //     we do not explicitly represent non terminal (internal nodes)
+    //     we identify them in C with their preorder rank  
+    //  log(alpha+r) bits for each symbol in C and each leaf in the
+    //               binary tree, total log(alpha+r)(C+r), here alpha=256 
+    //               actually we could use just rlog(alpha) for the leaves
+    //               since they are non terminal  
+
+    rules += prules; // final number of rules
+    long est_size = (long) ( (2.0*rules+((double)bits(256+rules))*(rules+psizeC))/8 ) +1;
     fprintf(stderr,"  Original file size: %li\n",s.st_size);
     fprintf(stderr,"  Number of rules: %i\n",rules);
     fprintf(stderr,"  Final sequence length: %i\n",psizeC);
@@ -213,6 +236,5 @@ void main (int argc, char **argv)
     fprintf(stderr,"  Compression ratio: %0.2f%%\n", (100.0* est_size)/s.st_size);
     fprintf(stdout,"  Estimated output size (stdout): %ld\n",est_size); // don't change this: est_size must be the the last printed item 
     fprintf(stderr,"=== postprocessing completed!\n");
-
-    exit(0);
+    return 0;
   }

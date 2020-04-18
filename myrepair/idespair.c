@@ -151,13 +151,19 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot close file %s\n",outname);
     exit(1);
   }
+  
+     // final report 
+     // see ipostproc.c for the explanation of the est_size formula 
+     // (note here n = rules+alph)
+     // size in bytes of the compact representation 
+     double est_size_bits = (2.0*(n-alph)+((n-alph)+c)*(float)blog(n-1));     
      fprintf (stderr,"IDesPair succeeded\n\n");
      fprintf (stderr,"   Original ints: %i\n",u);
      fprintf (stderr,"   Number of rules: %i\n",n-alph);
      fprintf (stderr,"   Compressed sequence length: %i\n",c);
      fprintf (stderr,"   Maximum rule depth: %i\n",maxdepth);
      fprintf (stderr,"   Compression ratio: %0.2f%%\n", 
-                        (2.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/(u*blog(alph-1))*100.0);
+                        est_size_bits/(u*blog(alph-1))*100.0);
      return 0;
 }
 
