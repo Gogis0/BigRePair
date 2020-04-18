@@ -33,9 +33,10 @@ The CTPH parsing step has limited support for multiple threads. Use `bigrepair` 
 
 For very large input files (or not so large but without many repetitions), RePair may run out of memory and crash. In this case use option `-m` to limit RePair RAM usage
  
+
 ### Experimental feature (April 2020)
 
-Using the option `-i` *bigrepair* will consider the input file as a sequence of 32bit integers (hence the input file size must be a multiple of 4). The output grammar will have integers as non-terminal. To get the original file back, use again *bigrepair* with option `-di`. Currently all the integers in the input file must be smaller than $2^{30}$.
+Using the option `-i` *bigrepair* will consider the input file as a sequence of 32bit integers (hence the input file size must be a multiple of 4). The output grammar will have integers as non-terminal. To get the original file use again *bigrepair* with option `-di`. Currently all the integers in the input file must be smaller than 2<sup>30</sup>.
 
 
 ## References
