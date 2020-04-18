@@ -2,10 +2,10 @@
 #include <stdio.h>
 
 
-// iprocdic_new.c
+// iprocdic.c
 //
 // Intermediate tool for bigRepair for integers 
-// derived from procdic_new.c and modified for the case
+// derived from procdic.c and modified for the case
 // in which the input alphabet of prefix free parsing consists of integers
 
 // transform the PFP dictionary and adding a 

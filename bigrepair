@@ -17,19 +17,19 @@ Prefix-free parsing + Repair compression
 
 # path of auxiliaty tools
 # ctph parsing 
-# parse_exe = "ctph/pscan.x"
-parse_exe = "ctph/newscan.x"
+parse_exe = "ctph/pscan.x"
+iparse_exe = "ctph/newscan.x"
 parseNT_exe = "ctph/newscanNT.x"
 # repair: plain and with memory constraint (symbols are integers in both tools) 
-repair_exe = "myrepair/repair"
+repair_exe = "myrepair/irepair"
 largerepair_exe = "large_repair/irepair"
 # despair (symbols are chars)
 despair_exe = "myrepair/despair"
 # despair for integer symbols 
 integer_despair_exe = "myrepair/idespair"
 # preprocess dict into a sequence on int32 representing both chars and distinct EOS 
-preprocess_exe = "procdic_new"
-integer_preprocess_exe = "iprocdic_new"
+preprocess_exe = "procdic"
+integer_preprocess_exe = "iprocdic"
 # create final output file
 postprocess_exe = "postproc"
 integer_postprocess_exe = "ipostproc"
@@ -61,13 +61,13 @@ def main():
       exe = integer_despair_exe if args.i else despair_exe
       command = "{exe} {file}".format(
                 exe = os.path.join(args.main_dir,exe), file=args.input)
-      print("==== Decompressing C+R files.\n Command:", command)
+      print("==== Decompressing C+R files.\nCommand:", command)
       if(execute_command(command,logfile)!=True):
         return
       print("Elapsed time: {0:.4f}".format(time.time()-start0));
       if args.c:      
         command = "cmp {file} {file}.out".format(file=args.input); 
-        print("==== Comparing decompressed file.\n Command:", command);
+        print("==== Comparing decompressed file.\nCommand:", command);
         if(execute_command(command,logfile)):
           print("Decompressed file matches");
         else:
@@ -77,8 +77,9 @@ def main():
     else:       # pfp + repair
       # ---------- parsing of the input file 
       if args.t>0:
+        exe = iparse_exe if args.i else parse_exe
         command = "{exe} {file} -w {wsize} -p {modulus} -t {th}".format(
-                exe = os.path.join(args.main_dir,parse_exe),
+                exe = os.path.join(args.main_dir,exe),
                 wsize=args.wsize, modulus = args.mod, th=args.t, file=args.input)
       else:
         command = "{exe} {file} -w {wsize} -p {modulus}".format(
@@ -87,7 +88,7 @@ def main():
       if args.i: command += " -b4" 
       if args.v: command += " -v"
       command += " -c"
-      print("==== Parsing.\n Command:", command)
+      print("==== Parsing.\nCommand:", command)
       if(execute_command(command,logfile)!=True):
         return
       ctph_time = time.time()-start
@@ -103,7 +104,7 @@ def main():
       exe = integer_preprocess_exe if args.i else preprocess_exe
       command = "{exe} {file}.dicz".format(
                 exe = os.path.join(args.main_dir, exe), file=args.input)
-      print("==== Preprocessing the dictionary.\n Command:", command)
+      print("==== Preprocessing the dictionary.\nCommand:", command)
       if(execute_command(command,logfile)!=True):
         return
       preprocess_time = time.time()-start
@@ -117,7 +118,7 @@ def main():
       else:
         command = "{exe} {file}.dicz.int {mb}".format(mb=args.m,
                 exe = os.path.join(args.main_dir,largerepair_exe), file=args.input)
-      print("==== Repair dictionary.\n Command:", command)
+      print("==== Repair dictionary.\nCommand:", command)
       if(execute_command(command,logfile)!=True):
        return
       repair_time = time.time()-start
@@ -131,7 +132,7 @@ def main():
       else:
         command = "{exe} {file}.parse {mb}".format(mb=args.m,
                 exe = os.path.join(args.main_dir,largerepair_exe), file=args.input)
-      print("==== Repair parse. Command:", command)
+      print("==== Repair parse.\nCommand:", command)
       if(execute_command(command,logfile)!=True):
        return
       repair_time = time.time()-start
@@ -142,7 +143,7 @@ def main():
       exe = integer_postprocess_exe if args.i else postprocess_exe
       command = "{exe} {file}".format(
                 exe = os.path.join(args.main_dir,exe), file=args.input)
-      print("==== Postprocessing the dictionary.\n Command:", command)
+      print("==== Postprocessing the dictionary.\nCommand:", command)
       fp = tempfile.TemporaryFile()
       if(execute_command(command,logfile,fp)!=True):
         return      

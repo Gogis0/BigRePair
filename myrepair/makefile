@@ -1,5 +1,5 @@
 
-all: repair despair idespair
+all: irepair despair idespair
 
 CFLAGS = -Wall -g -O9
 
@@ -7,17 +7,11 @@ CFLAGS = -Wall -g -O9
 # targets not producing a file declared phony
 .PHONY: all clean
 
-repair: repair.o array.o hash.o heap.o records.o basics.o makefile
-	gcc $(CFLAGS) -o repair repair.o array.o hash.o heap.o records.o basics.o
+irepair: irepair.o array.o hash.o heap.o records.o basics.o makefile
+	gcc $(CFLAGS) -o irepair irepair.o array.o hash.o heap.o records.o basics.o
 
-repair.o: repair.c array.h hash.h heap.h records.h basics.h makefile
-	gcc $(CFLAGS) -c repair.c
-
-despair: despair.o basics.o makefile
-	gcc $(CFLAGS) -o despair despair.o basics.o
-
-despair.o: despair.c basics.h makefile
-	gcc $(CFLAGS) -c despair.c
+irepair.o: irepair.c array.h hash.h heap.h records.h basics.h makefile
+	gcc $(CFLAGS) -c irepair.c
 
 array.o: array.c array.h hash.h heap.h records.h basics.h makefile
 	gcc $(CFLAGS) -c array.c
@@ -35,4 +29,4 @@ basics.o: basics.c basics.h makefile
 	gcc $(CFLAGS) -c basics.c
 
 clean:
-	rm -f repair despair *.o
+	rm -f irepair despair idespair *.o

@@ -157,7 +157,7 @@ int main (int argc, char **argv)
      // (note here n = rules+alph)
      // size in bytes of the compact representation 
      double est_size_bits = (2.0*(n-alph)+((n-alph)+c)*(float)blog(n-1));     
-     fprintf (stderr,"IDesPair succeeded\n\n");
+     fprintf (stderr,"IDesPair succeeded\n");
      fprintf (stderr,"   Original ints: %i\n",u);
      fprintf (stderr,"   Number of rules: %i\n",n-alph);
      fprintf (stderr,"   Compressed sequence length: %i\n",c);
