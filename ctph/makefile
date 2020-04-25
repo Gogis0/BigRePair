@@ -4,7 +4,7 @@ CFLAGS=-O3 -Wall -std=c99 -g
 CC=gcc
 
 # main executables 
-EXECS=newscan.x pscan.x unparsz unparse
+EXECS=newscan.x pscan.x
 # executables not using threads (and therefore not needing the thread library)
 EXECS_NT=newscanNT.x unparsz
 
@@ -21,9 +21,6 @@ newscan.x: newscan.cpp newscan.hpp malloc_count.o utils.o xerrors.o
 
 pscan.x: pscan.cpp pscan.hpp malloc_count.o utils.o xerrors.o 
 	$(CXX) $(CXX_FLAGS) -o $@ pscan.cpp malloc_count.o utils.o xerrors.o -ldl -pthread
-
-unparse: unparse.c utils.o malloc_count.o
-	$(CC) $(CFLAGS) -o $@ $^ -ldl
 
 unparsz: unparsz.c utils.o malloc_count.o
 	$(CC) $(CFLAGS) -o $@ $^ -ldl
