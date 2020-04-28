@@ -21,7 +21,7 @@
 
 // constant larger than every terminal in the original input
 // see file iprocdic.c for an explanation
-#define Unique (1<<30)
+// #define Unique (1<<30)  // now defined in the makefile
 
 //  exit program with error msg if test is true
 void die(int test,const char *msg)

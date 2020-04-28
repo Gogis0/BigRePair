@@ -23,7 +23,7 @@
 // be smaller than it. Unique can be made larger, but all unique 
 // separators must be smaller tham 2^{31}  (this is checked in the code)
 // if Unique is changed here it MUST be changed also in ipostproc.c
-#define Unique (1<<30)
+// #define Unique (1<<30)  // now defined in the makefile
 
 
 int main (int argc, char **argv)

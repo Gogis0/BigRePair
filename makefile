@@ -6,19 +6,19 @@ CC=gcc
 EXECS=procdic postproc iprocdic ipostproc
 
 # targets not producing a file declared phony
-.PHONY: all ctph myrepair large_repair clean
+.PHONY: all ctph repair large_repair clean
 
-all: $(EXECS) ctph myrepair large_repair
+all: $(EXECS) ctph repair large_repair
 
 # general rule for the targets in this directory 
 %: %.c
-	gcc $(CFLAGS) -o $@ $<
+	gcc $(CFLAGS) -o $@ $< -D Unique=0x78000000
 
 ctph:
 	make -C ctph
 
-myrepair:
-	make -C myrepair
+repair:
+	make -C repair
 
 large_repair:
 	make -C large_repair
@@ -26,6 +26,6 @@ large_repair:
 clean:
 	rm -f $(EXECS)
 	make -C ctph clean
-	make -C myrepair clean
+	make -C repair clean
 	make -C large_repair clean
 
