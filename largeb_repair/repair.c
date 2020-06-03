@@ -1,6 +1,4 @@
 
-/* a version to be used with rpair */
-
 /*
 
 Repair -- an implementation of Larsson and Moffat's compression and
@@ -28,6 +26,7 @@ Chile. Blanco Encalada 2120, Santiago, Chile. gnavarro@dcc.uchile.cl
 
 int PRNC = 0;  // print current sequence C (verbose!)
 int PRNR = 0;  // print active pairs in the heap (verbose!)
+int PRNCf = 0;  // print final sequence C 
 int PRNP = 0;  // print forming pairs
 int PRNL = 0;  // print progress on text scan
 
@@ -43,11 +42,13 @@ int PRNL = 0;  // print progress on text scan
 #include "hash.h"
 #include "heap.h"
 
-float factor = 0.50; // 1/extra space overhead; set closer to 1 for smaller and
+float factor = 0.75; // 1/extra space overhead; set closer to 1 for smaller and
          // slower execution
 int minsize = 256; // to avoid many reallocs at small sizes, should be ok as is
 
 relong u; // |text| and later current |C| with gaps
+
+unsigned short *sC; // shorts version of C
 
 relong *C; // compressed text, pero tiene -ptrs al mismo texto
 
@@ -65,13 +66,17 @@ Theap Heap; // special heap of pairs
 
 Trarray Rec; // records
 
-int *text; // first pass over this int array
+int chars[256];
+
+char map[256];
+
+unsigned char *text; // first pass over this char array
 
 int MB;
 
 int did0 = 0; // did prepare0 or not
 
-  // first pass, inplace on text, up to having sufficient space
+  // first pass, inplace on text, up to completing 256 symbols
 
 void prepare0 (relong len)
 
@@ -79,10 +84,15 @@ void prepare0 (relong len)
     int id;
     Tpair pair;
     alph = 0;
+    for (i=0;i<256;i++) chars[i] = -1;
     for (i=0;i<len;i++) 
-  { if (text[i] > alph) alph = text[i];
+  { unsigned char x = text[i];
+    if (chars[x] == -1) chars[x] = alph++;
+    text[i] = chars[x];
   }
-    n = ++alph;
+    for (i=0;i<256;i++) 
+  if (chars[i] != -1) map[chars[i]] = i;
+    n = alph;
     Rec = createRecords(factor,minsize);
     Heap = createHeap(len,&Rec,factor,minsize);
     Hash = createHash(256*256,&Rec);
@@ -98,12 +108,24 @@ void prepare0 (relong len)
     else 
        { incFreq (&Heap,id);
        }
-if (PRNL && (i%1000000 == 0)) printf ("Processed %lli ints\n",i);
+if (PRNL && (i%1000000 == 0)) printf ("Processed %lli chars\n",i);
   }
     purgeHeap (&Heap);
   }
 
-  // third pass, use the full machinery (no second pass)
+  // second pass, convert text to shorts
+
+void prepare1 (relong len)
+
+  { relong i;
+    if ((len /1024/1024) * 3 * sizeof(relong) <= MB)
+       { sC = NULL; return; }
+    sC = malloc (len * sizeof(short));
+    for (i = 0; i < len; i++) sC[i] = text[i];
+    free (text);
+  }
+
+  // third pass, use the full machinery
 
 void prepare (relong len)
 
@@ -112,8 +134,14 @@ void prepare (relong len)
     Tpair pair;
     c = u = len;
     C = (void*)malloc(u*sizeof(relong));
-    for (i=0;i<u;i++) C[i] = text[i];
-    free (text);
+    if (sC != NULL)
+       { for (i=0;i<u;i++) C[i] = sC[i];
+         free (sC);
+       }
+    else
+       { for (i=0;i<u;i++) C[i] = text[i];
+         free (text);
+       }
     L = (void*)malloc(u*sizeof(Tlist));
     assocRecords (&Rec,&Hash,&Heap,L);
     for (i=0;i<c-1;i++) 
@@ -139,14 +167,14 @@ void prepare (relong len)
          L[i].prev = -id-1; 
          Rec.records[id].cpos = i;
        }
-if (PRNL && (i%1000000 == 0)) printf ("Processed %lli ints\n",i);
+if (PRNL && (i%1000000 == 0)) printf ("Processed %lli chars\n",i);
   }
     L[i].prev = NullFreq; L[i].next = -1;
     purgeHeap (&Heap);
   }
 
 void prnSym(int c)
-   { printf ("%i",c);
+   { if (c < alph) printf("%c",map[c]); else printf ("%i",c);
    }
 
 void prntext (relong len)
@@ -155,6 +183,18 @@ void prntext (relong len)
     printf ("C[1..%lli] = ",len);
     while (i<len)
       { prnSym(text[i]);
+    printf (" ");
+  i++; 
+      }
+    printf ("\n\n");
+  }
+
+void prnsC (relong len)
+
+  { relong i = 0;
+    printf ("C[1..%lli] = ",len);
+    while (i<len)
+      { prnSym(sC[i]);
     printf (" ");
   i++; 
       }
@@ -188,7 +228,7 @@ void prnRec (void)
     printf ("\n");
   }
 
-  // first pass, work directly on the text ints 
+  // first pass, work directly on the text chars up to 256 symbols
 
 relong repair0 (relong len, FILE *R)
 
@@ -198,9 +238,10 @@ relong repair0 (relong len, FILE *R)
     Tpair pair;
     int left,right;
     if (fwrite(&alph,sizeof(int),1,R) != 1) return -1;
+    if (fwrite(map,sizeof(char),alph,R) != alph) return -1;
 if (PRNL) printf ("--- first stage, n = %lli\n",len);
 if (PRNC) prntext(len); 
-    while (n+1 > 0)
+    while (n < 256)
       { 
         if ((len /1024/1024) * 3 * sizeof(relong) <= MB) return len;
   else if (PRNP) printf ("Avoiding to use %lli MB\n",
@@ -271,7 +312,97 @@ if (PRNC) prntext(len);
    removeRecord (&Rec,oid);
    n++;
    purgeHeap(&Heap); // remove freq 1 from heap
-         text = (void*)realloc ((void*)text,len*sizeof(int)); // should not move it
+         text = (void*)realloc ((void*)text,len*sizeof(char)); // should not move it
+       }
+     purgeHeap(&Heap); // remove freq 1 from heap, if it exited for oid=-1
+     return len;
+   }
+
+  // second pass, work on a version of shorts, until the structure fits
+  // in MB, or until shorts are insufficient
+
+relong repair1 (relong len, FILE *R)
+
+  { int oid,id;
+    relong cpos,pos;
+    Trecord *orec;
+    Tpair pair;
+    int left,right;
+if (PRNL) printf ("--- second stage, n=%lli\n",len);
+if (PRNC) prnsC(len);
+    while (n < 1 << 16)
+      { 
+        if ((len /1024/1024) * 3 * sizeof(relong) <= MB) return len;
+  else if (PRNP) printf ("Avoiding to use %lli MB\n",
+             (len /1024/1024) * 3 * sizeof(relong));
+if (PRNR) prnRec();
+  oid = extractMax(&Heap);
+  if (oid == -1) break; // the end!!
+  orec = &Rec.records[oid];
+  if (fwrite (&orec->pair,sizeof(Tpair),1,R) != 1) return -1;
+        left = orec->pair.left; right = orec->pair.right;
+        // ofreq = orec->freq;
+if (PRNP) 
+    { printf("Chosen pair %i = (",n);
+      prnSym(orec->pair.left);
+      printf(",");
+      prnSym(orec->pair.right);
+      printf(") (%lli occs)\n",orec->freq);
+    }
+  pos = 0;
+  for (cpos=0;cpos<len-1;cpos++)
+     { if ((sC[cpos] != left) || (sC[cpos+1] != right))
+    sC[pos] = sC[cpos];
+       else // occurrence of the pair to modify
+    {   // decr freqs of pairs that disappear
+      if (pos > 0) 
+         { pair.left = sC[pos-1]; pair.right = sC[cpos];
+           id = searchHash(Hash,pair);
+           if (id != -1) // may not exist if purgeHeap'd
+                    { if (id != oid) decFreq(&Heap,id); //not to my pair!
+        }
+         }
+      if (cpos < len-2) 
+         { pair.left = sC[cpos+1]; pair.right = sC[cpos+2];
+           id = searchHash(Hash,pair);
+           if (id != -1) // may not exist if purgeHeap'd
+                    { if (id != oid) decFreq(&Heap,id); //not to my pair!
+        }
+         }
+      // create or incr freqs of pairs that appear
+      if (pos > 0) 
+         { pair.left = sC[pos-1];
+           pair.right = n;
+           id = searchHash(Hash,pair);
+                 if (id == -1) // new pair, insert
+              { id = insertRecord (&Rec,pair);
+              }
+                 else 
+              { incFreq (&Heap,id);
+                    }
+               }
+      if (cpos < len-2) 
+         { pair.left = n; pair.right = sC[cpos+2];
+           id = searchHash(Hash,pair);
+                 if (id == -1) // new pair, insert
+              { id = insertRecord (&Rec,pair);
+              }
+                 else 
+              { incFreq (&Heap,id);
+                    }
+               }
+      // actually do the substitution
+      sC[pos] = n; cpos++;
+    }
+        pos++;
+     }
+         if (cpos == len-1) sC[pos++] = sC[cpos];
+   len = pos;
+if (PRNC) prnsC(len);
+   removeRecord (&Rec,oid);
+   n++;
+   purgeHeap(&Heap); // remove freq 1 from heap
+         sC = realloc (sC,len*sizeof(short)); // should not move it
        }
      purgeHeap(&Heap); // remove freq 1 from heap, if it exited for oid=-1
      return len;
@@ -431,7 +562,7 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Usage: %s <filename> <MB>\n"
         "Compresses <filename> with repair and creates "
         "<filename>.ext compressed files\n"
-        "This is a version for sequences of integers\n"
+        "This version tries to produce balanced grammars\n"
         "Use <MB> to give an approximate idea of how much "
         "main memory you have for compression\n",argv[0]);
     exit(1);
@@ -441,7 +572,6 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Usage: %s <filename> <MB>\n"
         "Compresses <filename> with repair and creates "
         "<filename>.ext compressed files\n"
-        "This is a version for sequences of integers\n"
         "Use <MB> to give an approximate idea of how much "
         "main memory you have for compression\n",argv[0]);
     exit(1);
@@ -450,14 +580,14 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot stat file %s\n",argv[1]);
     exit(1);
   }
-     olen = len = s.st_size/sizeof(int);
+     olen = len = s.st_size;
      Tf = fopen (argv[1],"r");
      if (Tf == NULL)
   { fprintf (stderr,"Error: cannot open file %s for reading\n",argv[1]);
     exit(1);
   }
-     text = (void*)malloc(len*sizeof(int));
-     if (fread(text,sizeof(int),len,Tf) != len)
+     text = (void*)malloc(len*sizeof(char));
+     if (fread(text,1,len,Tf) != len)
   { fprintf (stderr,"Error: cannot read file %s\n",argv[1]);
     exit(1);
   }
@@ -471,6 +601,12 @@ int main (int argc, char **argv)
   }
      prepare0 (len);
      len = repair0 (len,Rf);
+     if (len == -1)
+  { fprintf (stderr,"Error: cannot write file %s\n",fname);
+    exit(1);
+  }
+     prepare1 (len);
+     if (sC != NULL) len = repair1 (len,Rf);
      if (len == -1)
   { fprintf (stderr,"Error: cannot write file %s\n",fname);
     exit(1);
@@ -504,12 +640,13 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot close file %s\n",fname);
     exit(1);
   }
+if (PRNCf) prnC();
      fprintf (stderr,"RePair succeeded\n\n");
-     fprintf (stderr,"   Original ints: %lli\n",olen);
+     fprintf (stderr,"   Original chars: %lli\n",olen);
      fprintf (stderr,"   Number of rules: %i\n",n-alph);
      fprintf (stderr,"   Final sequence length: %lli\n",c);
      fprintf (stderr,"   Compression ratio: %0.2f%%\n",
-      ((2.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/(olen*blog(alph-1))*100.0));
+      (4.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/(olen*8.0)*100.0);
      exit(0);
    }
 

@@ -24,14 +24,23 @@ Chile. Blanco Encalada 2120, Santiago, Chile. gnavarro@dcc.uchile.cl
 
 */
 
-#include <stdio.h>
+#ifndef BASICSINCLUDED
+#define BASICSINCLUDED
 
-int main (int c, char **argv)
+typedef long long relong;
 
- { FILE *f = fopen (argv[1],"w");
-   int i;
-   while ((i=getchar())!=-1)
-  { fwrite(&i,1,sizeof(int),f);
-  }
-   fclose(f);
- }
+void *myMalloc (relong n); // safe malloc/realloc
+void *myRealloc (void *p, relong n);
+
+#define malloc(n) myMalloc(n)
+#define realloc(p,n) myRealloc(p,n)
+
+typedef struct
+  { int left,right;
+  } Tpair;
+
+extern relong NullFreq;
+
+int blog (int x); // bits to represent x
+
+#endif

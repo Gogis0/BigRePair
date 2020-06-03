@@ -22,7 +22,9 @@ iparse_exe = "ctph/newscan.x"
 parseNT_exe = "ctph/newscanNT.x"
 # repair: plain and with memory constraint (symbols are integers in both tools) 
 repair_exe = "repair/irepair"
-largerepair_exe = "large_repair/irepair"
+largerepair_exe = "largeb_repair/irepair"
+# old version not producing balanced grammars
+# largerepair_exe = "large_repair/irepair" 
 # despair for byte symbols 
 despair_exe = "repair/despair"
 # despair for int32 symbols 

@@ -24,14 +24,43 @@ Chile. Blanco Encalada 2120, Santiago, Chile. gnavarro@dcc.uchile.cl
 
 */
 
+#include <stdlib.h>
 #include <stdio.h>
 
-int main (int c, char **argv)
+typedef long long relong;
 
- { FILE *f = fopen (argv[1],"w");
-   int i;
-   while ((i=getchar())!=-1)
-  { fwrite(&i,1,sizeof(int),f);
+relong NullFreq = ((relong)1) << (8*sizeof(relong)-1);
+
+void *myMalloc (relong n)
+
+  { void *p;
+    if (n == 0) return NULL;
+    p = (void*)malloc(n);
+    if (p == NULL)
+       { fprintf(stderr,"Error: malloc failed\n");
+	 exit(1);
+       }
+    return p;
   }
-   fclose(f);
- }
+
+void *myRealloc (void *p, relong n)
+
+  { if (n == 0) { free(p); return NULL; }
+    if (p == NULL) return myMalloc(n);
+    p = (void*)realloc(p,n);
+    if (p == NULL)
+       { fprintf(stderr,"Error: realloc failed\n");
+	 exit(1);
+       }
+    return p;
+  }
+
+int blog (int x)
+
+   { int l=0;
+     while (x) { x>>=1; l++; }
+     return l;
+   }
+
+
+

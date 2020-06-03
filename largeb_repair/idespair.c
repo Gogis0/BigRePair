@@ -44,39 +44,36 @@ Tpair *R; // rules
 
 int n; // |R|
 
-char map[256];
-
 char *ff;
 FILE *f;
-
 int maxdepth = 0;
 
-relong expand (int i, int d)
+int expand (int i, int d)
 
-   { relong ret = 1;
+   { int ret = 1;
      while (i >= alph)
-       { ret += expand(R[i-alph].left,d+1); 
-   i = R[i-alph].right; d++;
+       { ret += expand(R[i-alph].left,d+1);
+         i = R[i-alph].right; d++;
        }
-     if (putc(map[i],f) == EOF)
+     if (fwrite(&i,sizeof(int),1,f) != 1)
   { fprintf (stderr,"Error: cannot write file %s\n",ff);
     exit(1);
   }
      if (d > maxdepth) maxdepth = d;
-     return ret; 
+     return ret;
    }
 
 int main (int argc, char **argv)
 
    { char fname[1024];
      FILE *Tf,*Rf,*Cf;
-     int i,len,c;
-     relong u;
+     int i,len,c,u;
      struct stat s;
      if (argc != 2)
   { fprintf (stderr,"Usage: %s <filename>\n"
         "Decompresses <filename> from its .C and .R "
-        "extensions\n\n",argv[0]);
+        "extensions\n"
+        "This is a version for integer sequences\n",argv[0]);
     exit(1);
   }
      strcpy(fname,argv[1]);
@@ -95,11 +92,7 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot read file %s\n",fname);
     exit(1);
   }
-     if (fread(&map,sizeof(char),alph,Rf) != alph)
-  { fprintf (stderr,"Error: cannot read file %s\n",fname);
-    exit(1);
-  }
-     n = (len-sizeof(int)-alph)/sizeof(Tpair);
+     n = (len-sizeof(int))/sizeof(Tpair);
      R = (void*)malloc(n*sizeof(Tpair));
      if (fread(R,sizeof(Tpair),n,Rf) != n)
   { fprintf (stderr,"Error: cannot read file %s\n",fname);
@@ -138,13 +131,12 @@ int main (int argc, char **argv)
     exit(1);
   }
      fprintf (stderr,"DesPair succeeded\n\n");
-     fprintf (stderr,"   Original chars: %lli\n",u);
-     fprintf (stderr,"   Number of rules: %i\n",n);
+     fprintf (stderr,"   Original ints: %i\n",u);
+     fprintf (stderr,"   Number of rules: %i\n",n-alph);
      fprintf (stderr,"   Compressed sequence length: %i\n",c);
      fprintf (stderr,"   Maximum rule depth: %i\n",maxdepth);
      fprintf (stderr,"   Compression ratio: %0.2f%%\n",
-                        (2.0*n+(n+c)*(float)blog(n-1))/(u*8.0)*100.0);
-
+                        ((4.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/(u*blog(alph-1))*100.0));
      exit(0);
    }
 

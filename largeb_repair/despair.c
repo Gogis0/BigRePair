@@ -51,9 +51,9 @@ FILE *f;
 
 int maxdepth = 0;
 
-relong expand (int i, int d)
+int expand (int i, int d)
 
-   { relong ret = 1;
+   { int ret = 1;
      while (i >= alph)
        { ret += expand(R[i-alph].left,d+1); 
    i = R[i-alph].right; d++;
@@ -70,8 +70,7 @@ int main (int argc, char **argv)
 
    { char fname[1024];
      FILE *Tf,*Rf,*Cf;
-     int i,len,c;
-     relong u;
+     int i,len,c,u;
      struct stat s;
      if (argc != 2)
   { fprintf (stderr,"Usage: %s <filename>\n"
@@ -138,12 +137,12 @@ int main (int argc, char **argv)
     exit(1);
   }
      fprintf (stderr,"DesPair succeeded\n\n");
-     fprintf (stderr,"   Original chars: %lli\n",u);
+     fprintf (stderr,"   Original chars: %i\n",u);
      fprintf (stderr,"   Number of rules: %i\n",n);
      fprintf (stderr,"   Compressed sequence length: %i\n",c);
      fprintf (stderr,"   Maximum rule depth: %i\n",maxdepth);
      fprintf (stderr,"   Compression ratio: %0.2f%%\n",
-                        (2.0*n+(n+c)*(float)blog(n-1))/(u*8.0)*100.0);
+                        (4.0*n+(n+c)*(float)blog(n-1))/(u*8.0)*100.0);
 
      exit(0);
    }

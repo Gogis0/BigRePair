@@ -41,7 +41,7 @@ Theap createHeap (relong u, Trarray *Rec, float factor, int minsize)
     H.sqrtu = 2;
     while ((relong)H.sqrtu * (relong)H.sqrtu < u) H.sqrtu++;
     H.infreq = (void*)malloc(H.sqrtu * sizeof(Tarray));
-    for (i=1;i<H.sqrtu;i++) H.infreq[i] = createArray(factor,minsize);
+    for (i=1;i<H.sqrtu;i++) H.infreq[i] = createArray(Rec,factor,minsize);
     H.freq = malloc (H.sqrtu * sizeof(Thnode));
     H.freef = 0;
     for (i=0;i<H.sqrtu-1;i++) H.freq[i].next = i+1;
@@ -59,7 +59,7 @@ Theap createHeap (relong u, Trarray *Rec, float factor, int minsize)
 void destroyHeap (Theap *H) // destroys H
 
   { int i;
-    // Thfreq *l,*n;
+    
     for (i=1;i<H->sqrtu;i++) destroyArray(&H->infreq[i]);
     free (H->infreq); H->infreq = NULL;
     free (H->freq); H->freq = NULL;
@@ -151,7 +151,7 @@ if (PRNH) prnH(H);
       }
        }
     else // del from low freq part
-       { move (H->infreq[freq],hpos,H->infreq[freq].size-1,rec);
+       { move (H->infreq[freq],hpos,H->infreq[freq].fst,rec);
    deleteArray(&H->infreq[freq]);
    freq++;
          if (freq < H->sqrtu) // ins in low freq part
@@ -248,7 +248,7 @@ if (PRNH) prnH(H);
        }
     else // ins in low freq part
        { if (freq < H->sqrtu) // del from low freq part
-            { move (H->infreq[freq],hpos,H->infreq[freq].size-1,rec);
+            { move (H->infreq[freq],hpos,H->infreq[freq].fst,rec);
         deleteArray(&H->infreq[freq]);
       }
    else // del from heap, must be minimal 
@@ -296,7 +296,7 @@ if (PRNH) prnH(H);
     if (H->max < H->sqrtu)
        { while (H->max && (H->infreq[H->max].size == 0)) H->max--;
    if (!H->max) return -1; // empty heap
-         ret = H->infreq[H->max].pairs[H->infreq[H->max].size-1];
+         ret = H->infreq[H->max].pairs[H->infreq[H->max].fst];
          deleteArray(&H->infreq[H->max]);
        }
     else
@@ -326,9 +326,13 @@ void purgeHeap (Theap *H)
       // their freq cannot grow after a repair turn
 
   { //Trecord *rec = H->Rec->records;
-    int i,id;
-    for (i=0;i<H->infreq[1].size;i++)
-  { id = H->infreq[1].pairs[i];
+    int id,fst,size,max;
+    size = H->infreq[1].size;
+    fst = H->infreq[1].fst;
+    max = H->infreq[1].maxsize;
+    while (size--)
+  { id = H->infreq[1].pairs[fst];
+          fst = (fst+1) % max;
     removeRecord (H->Rec,id);
   }
     destroyArray(&H->infreq[1]);

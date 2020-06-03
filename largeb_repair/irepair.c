@@ -43,7 +43,7 @@ int PRNL = 0;  // print progress on text scan
 #include "hash.h"
 #include "heap.h"
 
-float factor = 0.50; // 1/extra space overhead; set closer to 1 for smaller and
+float factor = 0.75; // 1/extra space overhead; set closer to 1 for smaller and
          // slower execution
 int minsize = 256; // to avoid many reallocs at small sizes, should be ok as is
 
@@ -198,27 +198,27 @@ relong repair0 (relong len, FILE *R)
     Tpair pair;
     int left,right;
     if (fwrite(&alph,sizeof(int),1,R) != 1) return -1;
-if (PRNL) printf ("--- first stage, n = %lli\n",len);
-if (PRNC) prntext(len); 
+    if (PRNL) printf ("--- first stage, n = %lli\n",len);
+    if (PRNC) prntext(len); 
     while (n+1 > 0)
       { 
         if ((len /1024/1024) * 3 * sizeof(relong) <= MB) return len;
-  else if (PRNP) printf ("Avoiding to use %lli MB\n",
+        else if (PRNP) printf ("Avoiding to use %lli MB\n",
              (len /1024/1024) * 3 * sizeof(relong));
-if (PRNR) prnRec();
-  oid = extractMax(&Heap);
-  if (oid == -1) break; // the end!!
-  orec = &Rec.records[oid];
-  if (fwrite (&orec->pair,sizeof(Tpair),1,R) != 1) return -1;
-        left = orec->pair.left; right = orec->pair.right;
-if (PRNP) 
-    { printf("Chosen pair %i = (",n);
-      prnSym(orec->pair.left);
-      printf(",");
-      prnSym(orec->pair.right);
-      printf(") (%lli occs)\n",orec->freq);
-    }
-  pos = 0;
+        if (PRNR) prnRec();
+        oid = extractMax(&Heap);
+        if (oid == -1) break; // the end!!
+        orec = &Rec.records[oid];
+        if (fwrite (&orec->pair,sizeof(Tpair),1,R) != 1) return -1;
+          left = orec->pair.left; right = orec->pair.right;
+        if (PRNP) 
+        { printf("Chosen pair %i = (",n);
+          prnSym(orec->pair.left);
+          printf(",");
+          prnSym(orec->pair.right);
+          printf(") (%lli occs)\n",orec->freq);
+        }
+        pos = 0;
   for (cpos=0;cpos<len-1;cpos++)
      { if ((text[cpos] != left) || (text[cpos+1] != right))
     text[pos] = text[cpos];
@@ -431,7 +431,7 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Usage: %s <filename> <MB>\n"
         "Compresses <filename> with repair and creates "
         "<filename>.ext compressed files\n"
-        "This is a version for sequences of integers\n"
+        "This is a version for sequences of integers trying to produce balanced grammars\n"
         "Use <MB> to give an approximate idea of how much "
         "main memory you have for compression\n",argv[0]);
     exit(1);
@@ -441,7 +441,7 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Usage: %s <filename> <MB>\n"
         "Compresses <filename> with repair and creates "
         "<filename>.ext compressed files\n"
-        "This is a version for sequences of integers\n"
+        "This is a version for sequences of integers trying to produce balanced grammars\n"
         "Use <MB> to give an approximate idea of how much "
         "main memory you have for compression\n",argv[0]);
     exit(1);

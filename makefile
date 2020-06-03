@@ -6,9 +6,9 @@ CC=gcc
 EXECS=procdic postproc iprocdic ipostproc
 
 # targets not producing a file declared phony
-.PHONY: all ctph repair large_repair clean
+.PHONY: all ctph repair large_repair largeb_repair clean
 
-all: $(EXECS) ctph repair large_repair
+all: $(EXECS) ctph repair large_repair largeb_repair
 
 # general rule for the targets in this directory 
 %: %.c
@@ -23,9 +23,13 @@ repair:
 large_repair:
 	make -C large_repair
 
+largeb_repair:
+	make -C largeb_repair
+
 clean:
 	rm -f $(EXECS)
 	make -C ctph clean
 	make -C repair clean
 	make -C large_repair clean
+	make -C largeb_repair clean
 

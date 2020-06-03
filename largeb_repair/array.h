@@ -24,14 +24,31 @@ Chile. Blanco Encalada 2120, Santiago, Chile. gnavarro@dcc.uchile.cl
 
 */
 
-#include <stdio.h>
+	// extendible circular array for pairs
 
-int main (int c, char **argv)
+#ifndef ARRAYINCLUDED
+#define ARRAYINCLUDED
 
- { FILE *f = fopen (argv[1],"w");
-   int i;
-   while ((i=getchar())!=-1)
-  { fwrite(&i,1,sizeof(int),f);
-  }
-   fclose(f);
- }
+#include "basics.h"
+
+typedef struct
+   { int *pairs; // identifiers
+     int maxsize;  
+     int size;
+     int fst; // first of circular array
+     float factor;
+     int minsize;
+     void *Rec; // records
+   } Tarray;
+
+// contents can be accessed as A.pairs[0..A.size-1]
+
+int insertArray (Tarray *A, int pair); // inserts pair in A, returns pos
+
+void deleteArray (Tarray *A); // deletes last cell in A
+
+Tarray createArray (void *Rec, float factor, int minsize); // creates empty array
+
+void destroyArray (Tarray *A); // destroys A
+  
+#endif

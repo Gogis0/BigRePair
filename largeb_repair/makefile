@@ -1,4 +1,4 @@
-EXECS = irepair
+EXECS = irepair 
 CFLAGS = -Wall -g -m64 -O9
 
 # these excutables are not used by Repair 
@@ -55,3 +55,4 @@ toint: toint.c makefile
 
 clean:
 	rm -f $(EXECS) *.o
+

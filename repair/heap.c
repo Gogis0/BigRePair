@@ -24,7 +24,7 @@ Chile. Blanco Encalada 2120, Santiago, Chile. gnavarro@dcc.uchile.cl
 
 */
 
-	// binary heap with sqrt(u) heaps for least occurring ones
+  // binary heap with sqrt(u) heaps for least occurring ones
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -33,8 +33,8 @@ Chile. Blanco Encalada 2120, Santiago, Chile. gnavarro@dcc.uchile.cl
 static int PRNH = 0;
 
 Theap createHeap (int u, Trarray *Rec, float factor, int minsize) 
-				// creates new empty heap
-				// minsize, factor: space/time tradeoffs
+        // creates new empty heap
+        // minsize, factor: space/time tradeoffs
 
   { Theap H;
     int i;
@@ -59,7 +59,7 @@ Theap createHeap (int u, Trarray *Rec, float factor, int minsize)
 void destroyHeap (Theap *H) // destroys H
 
   { int i;
-    Thfreq *l,*n;
+    // Thfreq *l,*n;
     for (i=1;i<H->sqrtu;i++) destroyArray(&H->infreq[i]);
     free (H->infreq); H->infreq = NULL;
     free (H->freq); H->freq = NULL;
@@ -87,10 +87,10 @@ void prnH (Theap *H)
     while (fp != -1)
        { f = &H->ff[fp];
          printf ("freq=%i, elems=%i\n",f->freq,f->elems);
-	 if (prevf <= f->freq)
-	    { fp++; }
-	 prevf = f->freq;
-	 fp = f->smaller;
+   if (prevf <= f->freq)
+      { fp++; }
+   prevf = f->freq;
+   fp = f->smaller;
        }
   }
 
@@ -105,88 +105,88 @@ void incFreq (Theap *H, int id) // inc freq of pair Rec[id]
 if (PRNH) prnH(H);
     if (freq >= H->sqrtu) // high freq part, hpos is a ptr within freq
        { p = &H->freq[hpos];
-	 fp = p->fnode;
-	 f = &H->ff[fp];
-	 freq++;
-		// shortcut for common case: f has only p and !exists f+1 
-	 if ((p->prev == -1) && (p->next == -1) && 
-	     ((f->larger == -1) || (H->ff[f->larger].freq != freq)))
-	    { f->freq = freq; }
-	 else  // the long way, hopefully not so common
-	    {   	// remove p from f list
-	      if (p->prev == -1) f->elems = p->next; 
-	      else H->freq[p->prev].next = p->next;
-	      if (p->next != -1) H->freq[p->next].prev = p->prev;
-		     // add p to larger list (lf)
-	      p->prev = -1;
-	      if ((f->larger != -1) && (H->ff[f->larger].freq == freq)) 
-						// next freq exists
-	         { lfp = f->larger;
-		   lf = &H->ff[lfp];
-	           p->next = lf->elems;
-		   H->freq[lf->elems].prev = hpos;
-	         }
-	      else // create one
-	         { lfp = H->freeff;
-	           lf = &H->ff[lfp];
-		   H->freeff = lf->larger;
-	           lf->freq = freq;
-	           lf->smaller = fp; lf->larger = f->larger;
-		   if (f->larger != -1) H->ff[f->larger].smaller = lfp;
-		   else H->largest = lfp;
-	           f->larger = lfp;
-	           p->next = -1;
-	         }
-	      lf->elems = hpos;
-	      p->fnode = lfp;
-		     // see if f disappears
-	      if (f->elems == -1)
-	         { if (f->smaller == -1) H->smallest = f->larger;
-	           else H->ff[f->smaller].larger = f->larger;
-	           if (f->larger == -1) H->largest = f->smaller;
-	           else H->ff[f->larger].smaller = f->smaller;
-	           f->larger = H->freeff;
-		   H->freeff = fp;
-	         }
-	    }
+   fp = p->fnode;
+   f = &H->ff[fp];
+   freq++;
+    // shortcut for common case: f has only p and !exists f+1 
+   if ((p->prev == -1) && (p->next == -1) && 
+       ((f->larger == -1) || (H->ff[f->larger].freq != freq)))
+      { f->freq = freq; }
+   else  // the long way, hopefully not so common
+      {     // remove p from f list
+        if (p->prev == -1) f->elems = p->next; 
+        else H->freq[p->prev].next = p->next;
+        if (p->next != -1) H->freq[p->next].prev = p->prev;
+         // add p to larger list (lf)
+        p->prev = -1;
+        if ((f->larger != -1) && (H->ff[f->larger].freq == freq)) 
+            // next freq exists
+           { lfp = f->larger;
+       lf = &H->ff[lfp];
+             p->next = lf->elems;
+       H->freq[lf->elems].prev = hpos;
+           }
+        else // create one
+           { lfp = H->freeff;
+             lf = &H->ff[lfp];
+       H->freeff = lf->larger;
+             lf->freq = freq;
+             lf->smaller = fp; lf->larger = f->larger;
+       if (f->larger != -1) H->ff[f->larger].smaller = lfp;
+       else H->largest = lfp;
+             f->larger = lfp;
+             p->next = -1;
+           }
+        lf->elems = hpos;
+        p->fnode = lfp;
+         // see if f disappears
+        if (f->elems == -1)
+           { if (f->smaller == -1) H->smallest = f->larger;
+             else H->ff[f->smaller].larger = f->larger;
+             if (f->larger == -1) H->largest = f->smaller;
+             else H->ff[f->larger].smaller = f->smaller;
+             f->larger = H->freeff;
+       H->freeff = fp;
+           }
+      }
        }
     else // del from low freq part
        { move (H->infreq[freq],hpos,H->infreq[freq].fst,rec);
-	 deleteArray(&H->infreq[freq]);
-	 freq++;
+   deleteArray(&H->infreq[freq]);
+   freq++;
          if (freq < H->sqrtu) // ins in low freq part
             { rec[id].hpos = insertArray (&H->infreq[freq],id);
             }
-	 else // ins in freq part 
-	    { 		// allocate a free cell for it
-	      hpos = H->freef;
-	      H->freef = H->freq[H->freef].next;
-	      rec[id].hpos = hpos;
-	      p = &H->freq[hpos];
-	      p->prev = -1;
-	      p->id = id;
-	      if ((H->smallest != -1) && (H->ff[H->smallest].freq == freq)) 
-							// freq exists
-		 { fp = H->smallest;
-		   f = &H->ff[fp];
-		   p->next = f->elems;
-		   H->freq[f->elems].prev = hpos;
-		 }
-	      else // create freq
-	         { fp = H->freeff;
-		   f = &H->ff[fp];
-		   H->freeff = f->larger;
-	           f->freq = freq;
-	           f->smaller = -1;
-		   f->larger = H->smallest;
-		   if (H->smallest != -1) H->ff[H->smallest].smaller = fp;
-		   H->smallest = fp;
-		   if (H->largest == -1) H->largest = fp;
-	           p->next = -1;
-	         }
-	      f->elems = hpos;
-	      p->fnode = fp;
-	    }
+   else // ins in freq part 
+      {     // allocate a free cell for it
+        hpos = H->freef;
+        H->freef = H->freq[H->freef].next;
+        rec[id].hpos = hpos;
+        p = &H->freq[hpos];
+        p->prev = -1;
+        p->id = id;
+        if ((H->smallest != -1) && (H->ff[H->smallest].freq == freq)) 
+              // freq exists
+     { fp = H->smallest;
+       f = &H->ff[fp];
+       p->next = f->elems;
+       H->freq[f->elems].prev = hpos;
+     }
+        else // create freq
+           { fp = H->freeff;
+       f = &H->ff[fp];
+       H->freeff = f->larger;
+             f->freq = freq;
+             f->smaller = -1;
+       f->larger = H->smallest;
+       if (H->smallest != -1) H->ff[H->smallest].smaller = fp;
+       H->smallest = fp;
+       if (H->largest == -1) H->largest = fp;
+             p->next = -1;
+           }
+        f->elems = hpos;
+        p->fnode = fp;
+      }
        }
   }
 
@@ -201,79 +201,79 @@ void decFreq (Theap *H, int id) // dec freq of pair Rec[id]
 if (PRNH) prnH(H);
     if (freq > H->sqrtu) // high freq part
        { p = &H->freq[hpos];
-	 fp = p->fnode;
-	 f = &H->ff[p->fnode];
-	 freq--;
-		// shortcut for common case: f has only p and !exists f-1 
-	 if ((p->prev == -1) && (p->next == -1) && 
-	     ((f->smaller == -1) || (H->ff[f->smaller].freq != freq)))
-	    { f->freq = freq; }
-	 else  // the long way, hopefully not so common
-	    {   	// remove p from f list
-	      if (p->prev == -1) f->elems = p->next; 
-	      else H->freq[p->prev].next = p->next;
-	      if (p->next != -1) H->freq[p->next].prev = p->prev;
-		     // add p to smaller list (sf)
-	      p->prev = -1;
-	      if ((f->smaller != -1) && (H->ff[f->smaller].freq == freq)) 
-							// next freq exists
-	         { sfp = f->smaller;
-	           sf = &H->ff[sfp];
-	           p->next = sf->elems;
-		   H->freq[sf->elems].prev = hpos;
-	         }
-	      else // create one
-	         { sfp = H->freeff;
-		   sf = &H->ff[sfp];
-		   H->freeff = sf->larger;
-	           sf->freq = freq;
-	           sf->larger = fp; sf->smaller = f->smaller;
-		   if (f->smaller != -1) H->ff[f->smaller].larger = sfp;
-		   else H->smallest = sfp;
-	           f->smaller = sfp;
-	           p->next = -1;
-	         }
-	      sf->elems = hpos;
-	      p->fnode = sfp;
-		     // see if f disappears
-	      if (f->elems == -1)
-	         { if (f->smaller == -1) H->smallest = f->larger;
-	           else H->ff[f->smaller].larger = f->larger;
-	           if (f->larger == -1) H->largest = f->smaller;
-	           else H->ff[f->larger].smaller = f->smaller;
-	           f->larger = H->freeff;
-		   H->freeff = fp;
-	         }
-	    }
+   fp = p->fnode;
+   f = &H->ff[p->fnode];
+   freq--;
+    // shortcut for common case: f has only p and !exists f-1 
+   if ((p->prev == -1) && (p->next == -1) && 
+       ((f->smaller == -1) || (H->ff[f->smaller].freq != freq)))
+      { f->freq = freq; }
+   else  // the long way, hopefully not so common
+      {     // remove p from f list
+        if (p->prev == -1) f->elems = p->next; 
+        else H->freq[p->prev].next = p->next;
+        if (p->next != -1) H->freq[p->next].prev = p->prev;
+         // add p to smaller list (sf)
+        p->prev = -1;
+        if ((f->smaller != -1) && (H->ff[f->smaller].freq == freq)) 
+              // next freq exists
+           { sfp = f->smaller;
+             sf = &H->ff[sfp];
+             p->next = sf->elems;
+       H->freq[sf->elems].prev = hpos;
+           }
+        else // create one
+           { sfp = H->freeff;
+       sf = &H->ff[sfp];
+       H->freeff = sf->larger;
+             sf->freq = freq;
+             sf->larger = fp; sf->smaller = f->smaller;
+       if (f->smaller != -1) H->ff[f->smaller].larger = sfp;
+       else H->smallest = sfp;
+             f->smaller = sfp;
+             p->next = -1;
+           }
+        sf->elems = hpos;
+        p->fnode = sfp;
+         // see if f disappears
+        if (f->elems == -1)
+           { if (f->smaller == -1) H->smallest = f->larger;
+             else H->ff[f->smaller].larger = f->larger;
+             if (f->larger == -1) H->largest = f->smaller;
+             else H->ff[f->larger].smaller = f->smaller;
+             f->larger = H->freeff;
+       H->freeff = fp;
+           }
+      }
        }
     else // ins in low freq part
        { if (freq < H->sqrtu) // del from low freq part
             { move (H->infreq[freq],hpos,H->infreq[freq].fst,rec);
-	      deleteArray(&H->infreq[freq]);
-	    }
-	 else // del from heap, must be minimal 
-	    {   	// remove p from f list
+        deleteArray(&H->infreq[freq]);
+      }
+   else // del from heap, must be minimal 
+      {     // remove p from f list
               p = &H->freq[hpos];
-	      fp = p->fnode;
-	      f = &H->ff[p->fnode];
-	      if (p->prev == -1) f->elems = p->next; 
-	      else H->freq[p->prev].next = p->next;
-	      if (p->next != -1) H->freq[p->next].prev = p->prev;
-			// add its cell to free list
-	      p->next = H->freef;
-	      H->freef = hpos;
-		     // see if f disappears
-	      if (f->elems == -1)
-	         { H->smallest = f->larger;
-	           if (f->larger == -1) H->largest = -1;
-	           else H->ff[f->larger].smaller = -1;
-	           f->larger = H->freeff;
-		   H->freeff = fp;
-	         }
-	    }
-	 if (--freq > 0) // freq 0 disappears from pairs
+        fp = p->fnode;
+        f = &H->ff[p->fnode];
+        if (p->prev == -1) f->elems = p->next; 
+        else H->freq[p->prev].next = p->next;
+        if (p->next != -1) H->freq[p->next].prev = p->prev;
+      // add its cell to free list
+        p->next = H->freef;
+        H->freef = hpos;
+         // see if f disappears
+        if (f->elems == -1)
+           { H->smallest = f->larger;
+             if (f->larger == -1) H->largest = -1;
+             else H->ff[f->larger].smaller = -1;
+             f->larger = H->freeff;
+       H->freeff = fp;
+           }
+      }
+   if (--freq > 0) // freq 0 disappears from pairs
             rec[id].hpos = insertArray (&H->infreq[freq],id);
-	 else removeRecord(H->Rec,id);
+   else removeRecord(H->Rec,id);
        }
   }
 
@@ -286,7 +286,7 @@ void insertHeap (Theap *H, int id)  // with freq 1
 
 int extractMax (Theap *H)
 
-  { Trecord *rec = H->Rec->records;
+  { // Trecord *rec = H->Rec->records;
     int ret;
     Thnode *p;
     Thfreq *f;
@@ -295,46 +295,46 @@ if (PRNH) prnH(H);
     if ((H->max == H->sqrtu) && (H->largest == -1)) H->max--;
     if (H->max < H->sqrtu)
        { while (H->max && (H->infreq[H->max].size == 0)) H->max--;
-	 if (!H->max) return -1; // empty heap
+   if (!H->max) return -1; // empty heap
          ret = H->infreq[H->max].pairs[H->infreq[H->max].fst];
          deleteArray(&H->infreq[H->max]);
        }
     else
        { fp = H->largest;
-	 f = &H->ff[fp];
-	 p = &H->freq[f->elems];
+   f = &H->ff[fp];
+   p = &H->freq[f->elems];
          ret = p->id;
-		// remove element
-	 f->elems = p->next;
-	 if (p->next != -1) H->freq[p->next].prev = -1;
-	 else { // remove f as well
-	        H->largest = f->smaller;
-	        if (f->smaller == -1) H->smallest = -1;
-	        else H->ff[f->smaller].larger = -1;
-	        f->larger = H->freeff;
-		H->freeff = fp;
-	      }
-		// add elem to free list
-	 p->next = H->freef;
-	 H->freef = p-H->freq;
+    // remove element
+   f->elems = p->next;
+   if (p->next != -1) H->freq[p->next].prev = -1;
+   else { // remove f as well
+          H->largest = f->smaller;
+          if (f->smaller == -1) H->smallest = -1;
+          else H->ff[f->smaller].larger = -1;
+          f->larger = H->freeff;
+    H->freeff = fp;
+        }
+    // add elem to free list
+   p->next = H->freef;
+   H->freef = p-H->freq;
        }
     return ret;
   }
 
 void purgeHeap (Theap *H) 
-			// remove elems with freq 1 from heap and hash
-			// their freq cannot grow after a repair turn
+      // remove elems with freq 1 from heap and hash
+      // their freq cannot grow after a repair turn
 
-  { Trecord *rec = H->Rec->records;
-    int i,id,fst,size,max;
+  { // Trecord *rec = H->Rec->records;
+    int id,fst,size,max;
     size = H->infreq[1].size;
     fst = H->infreq[1].fst;
     max = H->infreq[1].maxsize;
     while (size--)
-	{ id = H->infreq[1].pairs[fst];
+  { id = H->infreq[1].pairs[fst];
           fst = (fst+1) % max;
-	  removeRecord (H->Rec,id);
-	}
+    removeRecord (H->Rec,id);
+  }
     destroyArray(&H->infreq[1]);
   }
 
