@@ -274,7 +274,7 @@ int main (int argc, char **argv)
     long est_size = (long) ( (2.0*rules+((double)bits(alpha+rules))*(rules+psizeC)) /8 ) +1;
     fprintf(stderr,"  Original file size: %li (bytes)\n",s.st_size);
     fprintf(stderr,"  Number of rules: %i\n",rules);
-    fprintf(stderr,"  Final sequence length: %i\n",psizeC);
+    fprintf(stderr,"  Final sequence length: %i (integers)\n",psizeC);
     fprintf(stderr,"  Estimated output size (bytes): %ld\n",est_size);
     fprintf(stderr,"  Compression ratio: %0.2f%%\n", (100.0* est_size)/s.st_size);
     fprintf(stdout,"  Estimated output size (stdout): %ld\n",est_size); // don't change this: est_size must be the the last printed item to stdout

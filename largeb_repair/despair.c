@@ -90,21 +90,25 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot open file %s for reading\n",fname);
     exit(1);
   }
-     if (fread(&alph,sizeof(int),1,Rf) != 1)
+  // read size of alphabet in the original input file 
+  if (fread(&alph,sizeof(int),1,Rf) != 1)
   { fprintf (stderr,"Error: cannot read file %s\n",fname);
     exit(1);
   }
-     if (fread(&map,sizeof(char),alph,Rf) != alph)
+  // actual symbols for the identifiers 0...alph-1 in the compressed file 
+  if (fread(&map,sizeof(char),alph,Rf) != alph)
   { fprintf (stderr,"Error: cannot read file %s\n",fname);
     exit(1);
   }
-     n = (len-sizeof(int)-alph)/sizeof(Tpair);
-     R = (void*)malloc(n*sizeof(Tpair));
-     if (fread(R,sizeof(Tpair),n,Rf) != n)
+  // compute number of rules, and read rules in R
+  // each rule here is a pair of integers (representation is not compressed)
+  n = (len-sizeof(int)-alph)/sizeof(Tpair);
+  R = (void*)malloc(n*sizeof(Tpair));
+  if (fread(R,sizeof(Tpair),n,Rf) != n)
   { fprintf (stderr,"Error: cannot read file %s\n",fname);
     exit(1);
   }
-     fclose(Rf);
+  fclose(Rf);
 
      strcpy(fname,argv[1]);
      strcat(fname,".C");
@@ -136,14 +140,16 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot close file %s\n",argv[1]);
     exit(1);
   }
-     fprintf (stderr,"DesPair succeeded\n\n");
-     fprintf (stderr,"   Original chars: %i\n",u);
-     fprintf (stderr,"   Number of rules: %i\n",n);
-     fprintf (stderr,"   Compressed sequence length: %i\n",c);
-     fprintf (stderr,"   Maximum rule depth: %i\n",maxdepth);
-     fprintf (stderr,"   Compression ratio: %0.2f%%\n",
-                        (4.0*n+(n+c)*(float)blog(n-1))/(u*8.0)*100.0);
-
-     exit(0);
-   }
+  // here n is the number of rules, n+alpha the effective alphabet in C 
+  long est_size = (long) ( (2.0*n+(n+c)*(float)blog(n+alph-1))/8) + 1;
+  fprintf (stderr,"DesPair succeeded\n");
+  fprintf (stderr,"   Original chars: %i\n",u);
+  fprintf (stderr,"   Number of rules: %i\n",n);
+  fprintf (stderr,"   Compressed sequence length: %i (integers)\n",c);
+  fprintf (stderr,"   Maximum rule depth: %i\n",maxdepth);
+  fprintf (stderr,"   Estimated output size (bytes): %ld\n",est_size);
+  fprintf (stderr,"   Compression ratio: %0.2f%%\n", (100.0* est_size)/u);
+  // original estimate:                (4.0*n+(n+c)*(float)blog(n-1))/(u*8.0)*100.0);
+  exit(0);
+}
 

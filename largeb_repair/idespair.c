@@ -130,13 +130,16 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot close file %s\n",argv[1]);
     exit(1);
   }
-     fprintf (stderr,"DesPair succeeded\n\n");
-     fprintf (stderr,"   Original ints: %i\n",u);
-     fprintf (stderr,"   Number of rules: %i\n",n-alph);
-     fprintf (stderr,"   Compressed sequence length: %i\n",c);
-     fprintf (stderr,"   Maximum rule depth: %i\n",maxdepth);
-     fprintf (stderr,"   Compression ratio: %0.2f%%\n",
-                        ((4.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/(u*blog(alph-1))*100.0));
-     exit(0);
+  // here n is the number of rules, n+alpha the effective alphabet in C 
+  long est_size = (long) ( (2.0*n+(n+c)*(float)blog(n+alph-1))/8) + 1;  
+  fprintf (stderr,"DesPair succeeded\n");
+  fprintf (stderr,"   Original ints: %i\n",u);
+  fprintf (stderr,"   Number of rules: %i\n",n-alph);
+  fprintf (stderr,"   Compressed sequence length: %i\n",c);
+  fprintf (stderr,"   Maximum rule depth: %i\n",maxdepth);
+  fprintf (stderr,"   Estimated output size (bytes): %ld\n",est_size);
+  fprintf (stderr,"   Compression ratio: %0.2f%%\n", (100.0* est_size)/(u*blog(alph-1)/8));
+  // original estimate:   ((4.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/(u*blog(alph-1))*100.0));
+  exit(0);
    }
 

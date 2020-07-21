@@ -504,12 +504,13 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot close file %s\n",fname);
     exit(1);
   }
-     fprintf (stderr,"RePair succeeded\n\n");
+     long est_size = (long) ( (2.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/8) + 1;
+     fprintf (stderr,"RePair succeeded\n");
      fprintf (stderr,"   Original ints: %lli\n",olen);
      fprintf (stderr,"   Number of rules: %i\n",n-alph);
      fprintf (stderr,"   Final sequence length: %lli\n",c);
-     fprintf (stderr,"   Compression ratio: %0.2f%%\n",
-      ((2.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/(olen*blog(alph-1))*100.0));
+     fprintf (stderr,"   Estimated output size (bytes): %ld\n",est_size);
+     fprintf (stderr,"   Compression ratio: %0.2f%%\n", (100.0* est_size)/(olen*blog(alph-1)/8));
      exit(0);
    }
 

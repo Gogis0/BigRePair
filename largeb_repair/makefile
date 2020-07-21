@@ -1,4 +1,4 @@
-EXECS = irepair 
+EXECS = irepair idespair repair despair
 CFLAGS = -Wall -g -m64 -O9
 
 # these excutables are not used by Repair 

@@ -26,7 +26,7 @@ Chile. Blanco Encalada 2120, Santiago, Chile. gnavarro@dcc.uchile.cl
 
 int PRNC = 0;  // print current sequence C (verbose!)
 int PRNR = 0;  // print active pairs in the heap (verbose!)
-int PRNCf = 0;  // print final sequence C 
+int PRNCf = 0; // print final sequence C 
 int PRNP = 0;  // print forming pairs
 int PRNL = 0;  // print progress on text scan
 
@@ -627,26 +627,35 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot open file %s for writing\n",fname);
     exit(1);
   }
-     i = 0;
-     while (i<u)
+  i = 0;
+  while (i<u)
         { int cc = (int)C[i];
-    if (fwrite(&cc,sizeof(int),1,Cf) != 1)
+  if (fwrite(&cc,sizeof(int),1,Cf) != 1)
              { fprintf (stderr,"Error: cannot write file %s\n",fname);
                exit(1);
              }
           i++; if ((i < u) && (C[i] < 0)) i = -C[i]-1;
         }
-     if (fclose(Cf) != 0)
+  if (fclose(Cf) != 0)
   { fprintf (stderr,"Error: cannot close file %s\n",fname);
     exit(1);
   }
-if (PRNCf) prnC();
-     fprintf (stderr,"RePair succeeded\n\n");
-     fprintf (stderr,"   Original chars: %lli\n",olen);
-     fprintf (stderr,"   Number of rules: %i\n",n-alph);
-     fprintf (stderr,"   Final sequence length: %lli\n",c);
-     fprintf (stderr,"   Compression ratio: %0.2f%%\n",
-      (4.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/(olen*8.0)*100.0);
-     exit(0);
-   }
+  if (PRNCf) prnC();
+  
+  // n is the highest numbered symbol, since each rule introduces a new symbol
+  // starting with alph, n-alph is the number of rules.
+  // output size: 2.0*rules for the grammar tree shape 
+  //              rules+c*log(n-1) for the encoding of the tree leaves 
+  //                               and the sequence C
+  long est_size = (long) ( (2.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/8) + 1;
+  fprintf (stderr,"RePair succeeded\n");
+  fprintf (stderr,"   Original chars: %lli\n",olen);
+  fprintf (stderr,"   Number of rules: %i\n",n-alph);
+  fprintf (stderr,"   Final sequence length: %lli (integers)\n",c);
+  fprintf (stderr,"   Estimated output size (bytes): %ld\n",est_size);
+  fprintf (stderr,"   Compression ratio: %0.2f%%\n", (100.0* est_size)/olen);
+  // original estimate (4.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/(olen*8.0)*100.0);
+  exit(0);
+  
+}
 
