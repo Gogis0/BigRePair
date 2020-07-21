@@ -10,7 +10,8 @@ EXECS=procdic postproc iprocdic ipostproc
 
 all: $(EXECS) ctph repair large_repair largeb_repair
 
-# general rule for the targets in this directory 
+# general rule for the targets in this directory
+# note: 0x78000000 = 2**31-2**27 = 2013265920
 %: %.c
 	gcc $(CFLAGS) -o $@ $< -D Unique=0x78000000
 

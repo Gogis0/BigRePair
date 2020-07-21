@@ -156,14 +156,16 @@ int main (int argc, char **argv)
      // see ipostproc.c for the explanation of the est_size formula 
      // (note here n = rules+alph)
      // size in bytes of the compact representation 
-     double est_size_bits = (2.0*(n-alph)+((n-alph)+c)*(float)blog(n-1));     
+     long est_size = (long) ((2.0*(n-alph)+((n-alph)+c)*(double)blog(n-1))/8+1);     
      fprintf (stderr,"IDesPair succeeded\n");
      fprintf (stderr,"   Original ints: %i\n",u);
+     fprintf (stderr,"   Size of the original input alphabet: %i\n",alph);
      fprintf (stderr,"   Number of rules: %i\n",n-alph);
-     fprintf (stderr,"   Compressed sequence length: %i\n",c);
+     fprintf (stderr,"   Compressed sequence length: %i (integers)\n",c);
      fprintf (stderr,"   Maximum rule depth: %i\n",maxdepth);
+     fprintf (stderr,"   Estimated output size (bytes): %ld\n",est_size);
      fprintf (stderr,"   Compression ratio: %0.2f%%\n", 
-                        est_size_bits/(u*blog(alph-1))*100.0);
+                        100.0*8*est_size/(u*blog(alph-1)));
      return 0;
 }
 

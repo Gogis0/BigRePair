@@ -62,8 +62,14 @@ int expand (int i, int d)
   { fprintf (stderr,"Error: cannot write file %s\n",ff);
     exit(1);
   }
-     if (d > maxdepth) maxdepth = d;// keep track of max depth, but it is not reported
+     if (d > maxdepth) maxdepth = d;// keep track of max depth
      return ret;
+   }
+
+static int bits (int x)
+   { int l=0;
+     while (x) { x>>=1; l++; }
+     return l;
    }
 
 int main (int argc, char **argv)
@@ -71,7 +77,7 @@ int main (int argc, char **argv)
    { char fname[1024]; char outname[1024];
      //char *text;
      FILE *Tf,*Rf,*Cf;
-     int i,len,u;
+     int i,len,c,u;
      struct stat s;
      if (argc != 2)
   { fprintf (stderr,"Usage: %s <filename>\n"
@@ -98,9 +104,14 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot read file %s\n",fname);
     exit(1);
   }
+  // note that in the original char-based repair the R file contains also
+  // a map between the 0...alph-1 and the actual symbols in the input file
+  // here alph is 256 and there is no such map (this is why the two .R .C
+  // formats are not compatible).
+  
      // n is the number of rules, sizeof(int) accounts for alpha
      n = (len-sizeof(int))/sizeof(Tpair);
-     // allocate and reads array of rules stored as pairs 
+     // allocate and read array of rules stored as pairs 
      R = (void*)malloc(n*sizeof(Tpair));
      if (fread(R,sizeof(Tpair),n,Rf) != n)
   { fprintf (stderr,"Error: cannot read file %s\n",fname);
@@ -115,7 +126,7 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot stat file %s\n",fname);
     exit(1);
   }
-     len = s.st_size/sizeof(int);
+     c = len = s.st_size/sizeof(int);
      Cf = fopen (fname,"r");
      if (Cf == NULL)
   { fprintf (stderr,"Error: cannot open file %s for reading\n",fname);
@@ -145,6 +156,15 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot close file %s\n",outname);
     exit(1);
   }
-     return 0;
+  // here n is the number of rules, n+alpha the effective alphabet in C 
+  long est_size = (long) ( (2.0*n+(n+c)*(double)bits(n+256))/8) + 1;
+  fprintf (stderr,"DesPair succeeded\n");
+  fprintf (stderr,"   Original chars: %i\n",u);
+  fprintf (stderr,"   Number of rules: %i\n",n);
+  fprintf (stderr,"   Compressed sequence length: %i (integers)\n",c);
+  fprintf (stderr,"   Maximum rule depth: %i\n",maxdepth);
+  fprintf (stderr,"   Estimated output size (bytes): %ld\n",est_size);
+  fprintf (stderr,"   Compression ratio: %0.2f%%\n", (100.0* est_size)/u);
+  return 0;
 }
 

@@ -1,27 +1,26 @@
 // ipostproc.c
 //
-// Intermediate tool for bigRepair for integers 
-// combines a RePair compression for the dictionary and the parse into
-// a RePair compression for the original input
+// Final tool for bigRepair for integers 
+// combines a IRePair compression for the dictionary and the parse into
+// a IRePair compression for the original input
 
 // derived from postproc.c and modified for the case where
 // the input alphabet of prefix free parsing consists of integers
  
-// file.dicz.R contains rules for dictionary words, first int is # of terminals
-// file.dicz.C contains the sequences, separated by terminals >= 256
+// file.dicz.int.R contains rules for dictionary words, first int is # of terminals
+// file.dicz.int.C contains the sequences, separated by terminals >= Unique
 // for each sequence, create balanced rules to convert it into one nonterminal
 // the terminals in file.parse must be renamed as these one nonterminals
 // and the nonterminals must be shifted accordingly
-// the rules of .parse.R and .dicz.R must be appended
+// the rules of .parse.R and .dicz.int.R must be appended
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <assert.h>
 
-// constant larger than every terminal in the original input
-// see file iprocdic.c for an explanation
-// #define Unique (1<<30)  // now defined in the makefile
+// constant Unique larger than every terminal in the original input
+// now defined in the makefile. see file iprocdic.c for an explanation
 
 //  exit program with error msg if test is true
 void die(int test,const char *msg)
@@ -82,7 +81,7 @@ int main (int argc, char **argv)
 
     if (argc != 2)
        { fprintf (stderr,
-      "Usage: %s <file>\nmakes <file>.[RC] from <file>.[dicz+parse].[RC]\n",
+      "Usage: %s <file>\nmakes <file>.[RC] from <file>.[dicz.int+parse].[RC]\n",
       argv[0]);
    exit(1);
        }
@@ -269,14 +268,14 @@ int main (int argc, char **argv)
     //               binary tree, total log(alpha+r)(C+r), here alpha=256
     //               actually we could use just rlog(alpha) for the leaves
     //               since they are non terminal  
-          
+    long u = s.st_size/sizeof(int);      
     rules += prules; // final number of rules
-    long est_size = (long) ( (2.0*rules+((double)bits(alpha+rules))*(rules+psizeC)) /8 ) +1;
-    fprintf(stderr,"  Original file size: %li (bytes)\n",s.st_size);
-    fprintf(stderr,"  Number of rules: %i\n",rules);
+    long est_size = (long) ( (2.0*(rules-alpha)+((double)bits(rules-1))*(rules-alpha+psizeC)) /8 ) +1;
+    fprintf(stderr,"  Original file size: %li (integers)\n",u);
+    fprintf(stderr,"  Number of rules: %i\n",rules-alpha);
     fprintf(stderr,"  Final sequence length: %i (integers)\n",psizeC);
     fprintf(stderr,"  Estimated output size (bytes): %ld\n",est_size);
-    fprintf(stderr,"  Compression ratio: %0.2f%%\n", (100.0* est_size)/s.st_size);
+    fprintf(stderr,"  Compression ratio: %0.2f%%\n", (100.0*8*est_size)/(u*bits(alpha-1)));
     fprintf(stdout,"  Estimated output size (stdout): %ld\n",est_size); // don't change this: est_size must be the the last printed item to stdout
     fprintf(stderr,"=== postprocessing completed!\n");
     return 0;

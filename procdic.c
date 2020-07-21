@@ -8,6 +8,9 @@
 // the lengths of dictionary strings are provided in a separate .len file
 // in int32_t integers. 
 
+// input: file.dicz & file.dicz.len
+// output: file.dicz.int
+
 int main (int argc, char **argv)
 { 
   char foname[1024], flname[1024];

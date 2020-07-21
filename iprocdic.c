@@ -8,10 +8,10 @@
 // derived from procdic.c and modified for the case
 // in which the input alphabet of prefix free parsing consists of integers
 
-// transform the PFP dictionary and adding a 
+// transform the PFP dictionary adding a 
 // a unique terminator after each string
 // the values used for unique terminators are U, U+1, and so on ...
-// where U is currently 1<<30 (ie 2^30).
+// where U is currently 0x78000000 (constant Unique in makefile)
 // the program check that input symbols are indeed smaller than U 
 // otherwise it exits with an error message
  
@@ -19,11 +19,11 @@
 // the lengths (in symbols) of dictionary strings are provided in a 
 // separate .len file in int32_t integers. 
 
-// this is the first symbol used as a separator; all input symbols must 
+// The constant Unique is defined in the makefile to make
+// sure the same value is used also in ipostproc.
+// Unique is the first symbol used as a separator; all input symbols must 
 // be smaller than it. Unique can be made larger, but all unique 
-// separators must be smaller tham 2^{31}  (this is checked in the code)
-// if Unique is changed here it MUST be changed also in ipostproc.c
-// #define Unique (1<<30)  // now defined in the makefile
+// separators must be smaller than 2^{31}  (this is checked in the code)
 
 
 int main (int argc, char **argv)

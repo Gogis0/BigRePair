@@ -1,15 +1,16 @@
 // postproc.c
 //
-// Intermediate tool for bigRepair for integers 
-// combines a RePair compression for the dictionary and the parse into
+// final tool for bigRepair for chars  
+// combines a IRePair compression for the dictionary and the parse into
 // a RePair compression for the original input
 
-// file.dicz.R contains rules for dictionary words, first int is # of terminals
-// file.dicz.C contains the sequences, separated by terminals >= 256
-// for each sequence, create balanced rules to convert it into one nonterminal
-// the terminals in file.parse must be renamed as these one nonterminals
+// file.dicz.int.R contains rules for dictionary words, first int is # of terminals
+// file.dicz.int.C contains the sequences, separated by terminals >= 256
+// for each sequence (=original dictionary word), create balanced rules 
+// to convert it into one nonterminal
+// the terminals in file.parse must be renamed as these nonterminals
 // and the nonterminals must be shifted accordingly
-// the rules of .parse.R and .dicz.R must be appended
+// the rules of .parse.R and .dicz.int.R must be appended
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -25,7 +26,7 @@ void die(int test,const char *msg)
 }
 
 
-int bits (int x)
+static int bits (int x)
 
    { int l=0;
      while (x) { x>>=1; l++; }
@@ -56,7 +57,7 @@ int main (int argc, char **argv)
 
     if (argc != 2)
        { fprintf (stderr,
-      "Usage: %s <file> makes <file>.[RC] from <file>.[dicz+parse].[RC]\n",
+      "Usage: %s <file> makes <file>.[RC] from <file>.[dicz.int+parse].[RC]\n",
       argv[0]);
    exit(1);
        }
