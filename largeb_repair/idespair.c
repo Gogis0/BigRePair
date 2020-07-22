@@ -132,13 +132,14 @@ int main (int argc, char **argv)
   }
   // here n is the number of rules, n+alpha the effective alphabet in C 
   long est_size = (long) ( (2.0*n+(n+c)*(float)blog(n+alph-1))/8) + 1;  
-  fprintf (stderr,"DesPair succeeded\n");
+  fprintf (stderr,"IDesPair succeeded\n");
   fprintf (stderr,"   Original ints: %i\n",u);
-  fprintf (stderr,"   Number of rules: %i\n",n-alph);
+  fprintf (stderr,"   Size of the original input alphabet: %i\n",alph);
+  fprintf (stderr,"   Number of rules: %i\n",n);
   fprintf (stderr,"   Compressed sequence length: %i\n",c);
   fprintf (stderr,"   Maximum rule depth: %i\n",maxdepth);
   fprintf (stderr,"   Estimated output size (bytes): %ld\n",est_size);
-  fprintf (stderr,"   Compression ratio: %0.2f%%\n", (100.0* est_size)/(u*blog(alph-1)/8));
+  fprintf (stderr,"   Compression ratio: %0.2f%%\n", (100.0*8*est_size)/(u*blog(alph-1)));
   // original estimate:   ((4.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/(u*blog(alph-1))*100.0));
   exit(0);
    }

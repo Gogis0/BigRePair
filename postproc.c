@@ -120,7 +120,7 @@ int main (int argc, char **argv)
     diczC = fopen(fname,"r");
     if (diczC == NULL)
        { fprintf (stderr, "Cannot open %s\n",fname);
-   exit(1);
+         exit(1);
        }
     stat(fname,&s);
     sizeC = s.st_size/sizeof(int);
@@ -225,9 +225,8 @@ int main (int argc, char **argv)
     //     we identify them in C with their preorder rank  
     //  log(alpha+r) bits for each symbol in C and each leaf in the
     //               binary tree, total log(alpha+r)(C+r), here alpha=256 
-    //               actually we could use just rlog(alpha) for the leaves
+    //               actually we could use just r*log(alpha) bits for the leaves
     //               since they are non terminal  
-
     rules += prules; // final number of rules
     long est_size = (long) ( (2.0*rules+((double)bits(256+rules))*(rules+psizeC))/8 ) +1;
     fprintf(stderr,"  Original file size: %li (bytes)\n",s.st_size);

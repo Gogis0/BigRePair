@@ -90,8 +90,8 @@ int main (int argc, char **argv)
     sprintf(fname,"%s.R",argv[1]);
     R = fopen(fname,"w"); // output R file
     if (R == NULL)
-       { fprintf (stderr, "Cannot open %s\n",fname);
-   exit(1);
+       {fprintf (stderr, "Cannot open %s\n",fname);
+        exit(1);
        }
 
     // input file dicz.int.R
@@ -266,13 +266,14 @@ int main (int argc, char **argv)
     //     we identify them in C with their preorder rank  
     //  log(alpha+r) bits for each symbol in C and each leaf in the
     //               binary tree, total log(alpha+r)(C+r), here alpha=256
-    //               actually we could use just rlog(alpha) for the leaves
+    //               actually we could use just r*log(alpha) bits for the leaves
     //               since they are non terminal  
     long u = s.st_size/sizeof(int);      
     rules += prules; // final number of rules
-    long est_size = (long) ( (2.0*(rules-alpha)+((double)bits(rules-1))*(rules-alpha+psizeC)) /8 ) +1;
+    long est_size = (long) ( (2.0*rules+((double)bits(rules+alpha-1))*(rules+psizeC)) /8 ) +1;
     fprintf(stderr,"  Original file size: %li (integers)\n",u);
-    fprintf(stderr,"  Number of rules: %i\n",rules-alpha);
+    fprintf(stderr,"  Size of the original input alphabet: %i\n",alpha);
+    fprintf(stderr,"  Number of rules: %i\n",rules);
     fprintf(stderr,"  Final sequence length: %i (integers)\n",psizeC);
     fprintf(stderr,"  Estimated output size (bytes): %ld\n",est_size);
     fprintf(stderr,"  Compression ratio: %0.2f%%\n", (100.0*8*est_size)/(u*bits(alpha-1)));

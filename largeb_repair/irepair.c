@@ -505,7 +505,7 @@ int main (int argc, char **argv)
     exit(1);
   }
      long est_size = (long) ( (2.0*(n-alph)+((n-alph)+c)*(float)blog(n-1))/8) + 1;
-     fprintf (stderr,"RePair succeeded\n");
+     fprintf (stderr,"IRePair succeeded\n");
      fprintf (stderr,"   Original ints: %lli\n",olen);
      fprintf (stderr,"   Number of rules: %i\n",n-alph);
      fprintf (stderr,"   Final sequence length: %lli\n",c);

@@ -1,7 +1,7 @@
 EXECS = irepair idespair repair despair
 CFLAGS = -Wall -g -m64 -O9
 
-# these excutables are not used by Repair 
+# these excutables are not used by BigRepair 
 #   idespair repair despair toint 
 # they compile but have not been tested!
 
