@@ -162,7 +162,7 @@ def main():
       
       # delete temporary parsing/dictionary files
       if not args.k:
-        command = "rm -f {file}.parse {file}.parse.C {file}.parse.R {file}.dicz {file}.dicz.int {file}.dicz.int.C {file}.dicz.int.R".format(file=args.input)
+        command = "rm -f {file}.parse {file}.parse.C {file}.parse.R {file}.dicz {file}.dicz.len {file}.dicz.int {file}.dicz.int.C {file}.dicz.int.R".format(file=args.input)
         if(execute_command(command,logfile)!=True):
           return
       # ---- repair done   
