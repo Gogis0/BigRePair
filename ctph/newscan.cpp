@@ -268,7 +268,7 @@ struct KR_window {
 };
 // -----------------------------------------------------------
 
-// ---- append n bytes of b[] to the zstring w; used to add a new symbol to the current word
+// ---- append n bytes of b[] to the ztring w; used to add a new symbol to the current word
 static void ztring_append(ztring &w, uint8_t *b, int n);
 // ---- reverse a byte buffer
 static void buffer_reverse(uint8_t* b, int n);
@@ -298,7 +298,7 @@ std::ostream& operator<< (std::ostream& out, const std::vector<T>& v) {
 // compute 64-bit KR hash of a ztring 
 // to avoid overflows in 64 bit aritmethic the prime is taken < 2**55
 uint64_t kr_hash(ztring s) {
-    uint64_t hash = 0;
+    uint64_t hash = 1;    // forcing a nonzero MSB to avoid collisions between 000xyz and xyz
     //const uint64_t prime = 3355443229;     // next prime(2**31+2**30+2**27)
     const uint64_t prime = 27162335252586509; // next prime (2**54 + 2**53 + 2**47 + 2**13)
     for(size_t k=0;k<s.size();k++) {
@@ -318,9 +318,9 @@ static void save_update_word(Args& arg, ztring& w, map<uint64_t,word_stats>& fre
   assert(w.size()%arg.bytexsymb==0); 
   assert(pos==0 || w.size() > (minsize * arg.bytexsymb));
   if(w.size() <= minsize * arg.bytexsymb) return;
-  // save overlap consisting ot the last minsize symbols 
+  // save overlap consisting of the last minsize symbols 
   ztring overlap(w.begin() + (w.size() - minsize*arg.bytexsymb), w.end()); 
-  // if we are compressing, discard the overlap
+  // if we are compressing, discard the overlap (the first minsize) from current word before storage
   if(arg.compress)
      w.erase(w.begin() + (w.size() - minsize*arg.bytexsymb), w.end()); 
   
@@ -415,7 +415,7 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
   assert(IBYTES<=sizeof(pos)); // IBYTES bytes of pos are written to the sa info file 
   // init empty KR window
   KR_window krw(arg.w,arg.bytexsymb);
-  // init first word in the parsing with a Dollar symbol unless we are just compressing
+  // init first word in the parsing with a generalized dollar symbol unless we are just compressing
   ztring word;
   if(!arg.compress) 
     ztring_append(word,dollar,arg.bytexsymb);
@@ -425,14 +425,15 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
     // we must be able to read exactly arg.bytexsymb bytes otherwise the symbol is incomplete
     if(f.gcount()!=arg.bytexsymb) {
       if(f.gcount()==0) break;
-      else {cerr << "Incomplete symbol at position " << pos <<" Exiting....\n"; exit(1);}
+      else {cerr << "Incomplete symbol at position " << f.tellg()-f.gcount()  <<" Exiting....\n"; exit(1);}
     }
     // if not bigEndian swap bytes as we compare byte sequences 
     if(arg.bytexsymb>1 && !arg.bigEndian)
       buffer_reverse(buffer,arg.bytexsymb);      
     // if we are not simply compressing then we cannot accept 0,1,or 2
     if(!arg.compress && memcmp(buffer,dollar,arg.bytexsymb) <= 0) {
-      cerr << "Invalid symbol at position " << pos <<" Exiting...\n"; exit(1);
+      cerr << "Invalid symbol (starting with "<< buffer[0] <<") at file position ";
+      cerr << ((long)f.tellg() -  arg.bytexsymb) <<". Exiting...\n"; exit(1);
     }
     // add new symbol to current word and check if we reached a splitting point 
     ztring_append(word,buffer,arg.bytexsymb);
@@ -454,12 +455,11 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq)
   if(last_file) if(fclose(last_file)!=0) die("Error closing last file");  
   if(fclose(g)!=0) die("Error closing parse file");
   if(arg.compress) {
-    if(pos!=krw.tot_symb) cerr << "pos: " << pos <<" tot_symb " << krw.tot_symb << endl;
+    if(pos!=krw.tot_symb) cerr << "pos: " << f.tellg() <<" tot_symb " << krw.tot_symb << endl;
     assert(pos==krw.tot_symb);
   }
   else 
     assert(pos==krw.tot_symb+arg.w);
-  // if(pos!=krw.tot_char+arg.w) cerr << "Pos: " << pos << " tot " << krw.tot_char << endl;
   f.close();
   return krw.tot_symb;
 }
@@ -771,7 +771,7 @@ void fwrite_littleEndian(const uint8_t *b, int size, int n, FILE *f)
 
 
 
-// append n bytes of b[] to the zstring w
+// append n bytes of b[] to the ztring w
 // used to add a new symbol to the current word
 static void ztring_append(ztring &w, uint8_t *b, int n)
 {
