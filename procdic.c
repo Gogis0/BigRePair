@@ -16,17 +16,16 @@ int main (int argc, char **argv)
   char foname[1024], flname[1024];
   FILE *fi,*fo, *fl;
   int n=256;  // first integer value used as a separator
-  int c,i;
+  int c;
+  fputs("==== Command line:\n",stderr);
+  for(int i=0;i<argc;i++)
+    fprintf(stderr," %s",argv[i]);
+  fputs("\n",stderr);
 
   if(argc!=2) {
-     printf("Usage: %s <dictionaryfilename>\n\n", argv[0]);
+     fprintf(stderr,"Usage: %s <dictionaryfilename>\n\n", argv[0]);
      exit(1);
   }
-
-  puts("==== Command line:");
-  for(i=0;i<argc;i++)
-    printf(" %s",argv[i]);
-  puts("\n");
 
   // open dictionary file
   fi = fopen(argv[1],"r");
@@ -73,7 +72,7 @@ int main (int argc, char **argv)
   if(c!=EOF) {perror("Unexpected trailing chars in dictionary"); exit(1); }
   fclose(fo);
   fclose(fi);
-  printf ("%i strings\n",n-256);
-  puts("=== Preprocessing completed!");
+  fprintf(stderr,"%i strings\n",n-256);
+  fputs("=== Preprocessing completed!\n",stderr);
   exit(0);
 }

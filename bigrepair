@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys, time, argparse, subprocess, os.path, tempfile
-
+from psutil import virtual_memory
 
 Description = """
 Prefix-free parsing + Repair compression
@@ -46,11 +46,15 @@ def main():
   parser.add_argument('-d',  help='decompress',action='store_true')
   parser.add_argument('-c',  help='decompress and check',action='store_true')
   parser.add_argument('-r',  help='compression full report',action='store_true')
-  parser.add_argument('-m',  help='force repair to use at most M MBs',default=0, type=int)
+  parser.add_argument('-m',  help='force repair to use at most M MBs (def. 95% available RAM)',default=-1, type=int)
   parser.add_argument('-k',  help='keep intermediate files',action='store_true')
   parser.add_argument('-i',  help='input symbols are integers',action='store_true')
   parser.add_argument('-v', help="verbose", action='store_true')
   args = parser.parse_args()
+  # if no max RAM provided on command line uses 95% of total 
+  if(args.m<0):
+    mem = virtual_memory().total
+    args.m = max(1,int(0.95*mem/2**20)) # avoid accidental 0 since it triggers plain repair w/out memory constraints 
 
   logfile_name = args.input + ".log"
   # get absolute path to main bigrepair directory 

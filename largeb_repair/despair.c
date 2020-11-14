@@ -72,6 +72,10 @@ int main (int argc, char **argv)
      FILE *Tf,*Rf,*Cf;
      int i,len,c,u;
      struct stat s;
+     fputs("==== Command line:\n",stderr);
+     for(int i=0;i<argc;i++)
+       fprintf(stderr," %s",argv[i]);
+     fputs("\n",stderr);     
      if (argc != 2)
   { fprintf (stderr,"Usage: %s <filename>\n"
         "Decompresses <filename> from its .C and .R "

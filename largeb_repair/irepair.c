@@ -427,6 +427,11 @@ int main (int argc, char **argv)
      FILE *Tf,*Rf,*Cf;
      relong i,olen,len;
      struct stat s;
+     fputs("==== Command line:\n",stderr);
+     for(int i=0;i<argc;i++)
+       fprintf(stderr," %s",argv[i]);
+     fputs("\n",stderr);     
+     
      if (argc != 3)
   { fprintf (stderr,"Usage: %s <filename> <MB>\n"
         "Compresses <filename> with repair and creates "
