@@ -566,7 +566,7 @@ void print_help(char** argv, Args &args) {
         #ifndef NOTHREADS
         << "\t-t T\tnumber of helper threads, def. none " << endl
         #endif        
-        << "\t-c  \tdiscard overlaps and $'s" << endl
+        << "\t-c  \tcompression mode: discard overlaps and $'s" << endl
         << "\t-h  \tshow help and exit" << endl
         << "\t-s  \tcompute suffix array info" << endl;
   #ifdef GZSTREAM

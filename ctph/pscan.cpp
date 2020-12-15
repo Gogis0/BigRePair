@@ -321,7 +321,7 @@ void print_help(char** argv, Args &args) {
         << "\t-w W\tsliding window size, def. " << args.w << endl
         << "\t-p M\tmodulo for defining phrases, def. " << args.p << endl
         << "\t-t M\tnumber of helper threads, def. 4 " << endl
-        << "\t-c  \tdiscard redundant information" << endl
+        << "\t-c  \tcompression mode: discard redundant information" << endl
         << "\t-h  \tshow help and exit" << endl
         << "\t-s  \tcompute suffix array info" << endl;
   exit(1);
