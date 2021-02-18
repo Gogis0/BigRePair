@@ -31,6 +31,7 @@ Chile. Blanco Encalada 2120, Santiago, Chile. gnavarro@dcc.uchile.cl
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <limits.h>
 
 typedef struct
   { int left,right;
@@ -74,8 +75,7 @@ static int blog (int x)
 
 int main (int argc, char **argv)
 
-   { char fname[1024]; char outname[1024];
-     //char *text;
+   { char fname[PATH_MAX], outname[PATH_MAX];
      FILE *Tf,*Rf,*Cf;
      int i,len,c,u;
      struct stat s;
@@ -85,8 +85,8 @@ int main (int argc, char **argv)
      fputs("\n",stderr);     
      if (argc != 2)
   { fprintf (stderr,"Usage: %s <filename>\n"
-        "Decompresses <filename> from its .C and .R "
-        "extensions.\n Decompressed file is <filename>.out\n"
+        "Decompresses <filename> from its .C and .R extensions.\n"
+        "Decompressed file is <filename>.out\n"
         "This is a version for prefix-free parsing with integer symbols\n",argv[0]);
     exit(1);
   }
@@ -118,7 +118,7 @@ int main (int argc, char **argv)
   }
      fclose(Rf);
 
-   // open C file and get the nuber of symbols in it 
+     // open C file and get the number of symbols in it 
      strcpy(fname,argv[1]);
      strcat(fname,".C");
      if (stat (fname,&s) != 0)
@@ -132,7 +132,7 @@ int main (int argc, char **argv)
     exit(1);
   }
 
-  // open output file
+     // open output file
      strcpy(outname,argv[1]);
      strcat(outname,".out");
      Tf = fopen (outname,"w");

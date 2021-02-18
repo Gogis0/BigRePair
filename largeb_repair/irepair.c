@@ -37,6 +37,7 @@ int PRNL = 0;  // print progress on text scan
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include "basics.h"
 #include "records.h"
@@ -423,7 +424,7 @@ if (PRNC) prnC();
 
 int main (int argc, char **argv)
 
-   { char fname[1024];
+   { char fname[PATH_MAX];
      FILE *Tf,*Rf,*Cf;
      relong i,olen,len;
      struct stat s;

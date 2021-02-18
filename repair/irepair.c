@@ -50,8 +50,8 @@ int PRNL = 0;  // print progress on text scan
 #include "hash.h"
 #include "heap.h"
 
-float factor = 0.50; // 1/extra space overhead; set closer to 1 for smaller and
-         // slower execution
+float factor = 0.50; // 1/(extra space overhead); set closer to 1 for smaller and
+                     // slower execution
 int minsize = 256; // to avoid many reallocs at small sizes, should be ok as is
 
 int u; // |text| and later current |C| with gaps

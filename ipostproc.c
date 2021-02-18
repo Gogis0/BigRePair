@@ -19,7 +19,7 @@
 #include <sys/stat.h>
 #include <assert.h>
 
-// constant Unique larger than every terminal in the original input
+// constant Unique must be larger than every terminal in the original input
 // now defined in the makefile. see file iprocdic.c for an explanation
 
 //  exit program with error msg if test is true

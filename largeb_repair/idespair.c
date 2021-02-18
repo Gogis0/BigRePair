@@ -1,3 +1,4 @@
+// decompress an int-based .R .C pair
 
 /*
 
@@ -30,6 +31,7 @@ Chile. Blanco Encalada 2120, Santiago, Chile. gnavarro@dcc.uchile.cl
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <limits.h>
 #include "basics.h"
 
 relong u; // |text| and later current |C| with gaps
@@ -48,12 +50,15 @@ char *ff;
 FILE *f;
 int maxdepth = 0;
 
+// expand symbol i at depth d
+// if i is a terminal it is writen to f
+// if is a non terminal recusively expand left and right children 
 int expand (int i, int d)
 
    { int ret = 1;
-     while (i >= alph)
+     while (i >= alph) // while i is a non-terminal
        { ret += expand(R[i-alph].left,d+1);
-         i = R[i-alph].right; d++;
+         i = R[i-alph].right; d++; // second recursive call replaced by iteration
        }
      if (fwrite(&i,sizeof(int),1,f) != 1)
   { fprintf (stderr,"Error: cannot write file %s\n",ff);
@@ -65,7 +70,7 @@ int expand (int i, int d)
 
 int main (int argc, char **argv)
 
-   { char fname[1024];
+   { char fname[PATH_MAX], outname[PATH_MAX];
      FILE *Tf,*Rf,*Cf;
      int i,len,c,u;
      struct stat s;
@@ -75,8 +80,8 @@ int main (int argc, char **argv)
      fputs("\n",stderr);     
      if (argc != 2)
   { fprintf (stderr,"Usage: %s <filename>\n"
-        "Decompresses <filename> from its .C and .R "
-        "extensions\n"
+        "Decompresses <filename> from its .C and .R extensions.\n"
+        "Decompressed file is <filename>.out\n"
         "This is a version for integer sequences\n",argv[0]);
     exit(1);
   }
@@ -92,36 +97,43 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot open file %s for reading\n",fname);
     exit(1);
   }
+  // read alphabet size for the original input string 
      if (fread(&alph,sizeof(int),1,Rf) != 1)
   { fprintf (stderr,"Error: cannot read file %s\n",fname);
     exit(1);
   }
-     n = (len-sizeof(int))/sizeof(Tpair);
-     R = (void*)malloc(n*sizeof(Tpair));
+     n = (len-sizeof(int))/sizeof(Tpair); // number of rules 
+     R = (void*)malloc(n*sizeof(Tpair));  // array of rules 
      if (fread(R,sizeof(Tpair),n,Rf) != n)
   { fprintf (stderr,"Error: cannot read file %s\n",fname);
     exit(1);
   }
      fclose(Rf);
 
+     // open C file and get the number of symbols in it 
      strcpy(fname,argv[1]);
      strcat(fname,".C");
      if (stat (fname,&s) != 0)
   { fprintf (stderr,"Error: cannot stat file %s\n",fname);
     exit(1);
   }
-     c = len = s.st_size/sizeof(int);
+     c = len = s.st_size/sizeof(int); // number of symbols in C string
      Cf = fopen (fname,"r");
      if (Cf == NULL)
   { fprintf (stderr,"Error: cannot open file %s for reading\n",fname);
     exit(1);
   }
-     Tf = fopen (argv[1],"w");
+  
+     // open output file
+     strcpy(outname,argv[1]);
+     strcat(outname,".out");
+     Tf = fopen (outname,"w");
      if (Tf == NULL)
-  { fprintf (stderr,"Error: cannot open file %s for writing\n",argv[1]);
+  { fprintf (stderr,"Error: cannot open file %s for writing\n",outname);
     exit(1);
   }
-     u = 0; f = Tf; ff = argv[1];
+     u = 0; f = Tf; ff = outname;
+     // read one symbol of C at a time and expand it 
      for (;len>0;len--)
   { if (fread(&i,sizeof(int),1,Cf) != 1)
        { fprintf (stderr,"Error: cannot read file %s\n",fname);
@@ -131,7 +143,7 @@ int main (int argc, char **argv)
   }
      fclose(Cf);
      if (fclose(Tf) != 0)
-  { fprintf (stderr,"Error: cannot close file %s\n",argv[1]);
+  { fprintf (stderr,"Error: cannot close file %s\n",outname);
     exit(1);
   }
   // here n is the number of rules, n+alpha the effective alphabet in C 

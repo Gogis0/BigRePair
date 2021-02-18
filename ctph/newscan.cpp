@@ -320,7 +320,7 @@ static void save_update_word(Args& arg, ztring& w, map<uint64_t,word_stats>& fre
   if(w.size() <= minsize * arg.bytexsymb) return;
   // save overlap consisting of the last minsize symbols 
   ztring overlap(w.begin() + (w.size() - minsize*arg.bytexsymb), w.end()); 
-  // if we are compressing, discard the overlap (the first minsize) from current word before storage
+  // if we are compressing, discard the overlap (the last minsize symbols) from current word before storage
   if(arg.compress)
      w.erase(w.begin() + (w.size() - minsize*arg.bytexsymb), w.end()); 
   
@@ -712,6 +712,7 @@ int main(int argc, char** argv)
   // fill array computing some statistics
   uint64_t sumLen = 0;
   uint64_t totWord = 0;
+  cerr << "starting... second pass\n";
   for (auto& x: wordFreq) {
     sumLen += (x.second.str.size())/arg.bytexsymb;
     totWord += x.second.occ;

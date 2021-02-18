@@ -14,16 +14,16 @@
 // where U is currently 0x78000000 (constant Unique in makefile)
 // the program check that input symbols are indeed smaller than U 
 // otherwise it exits with an error message
- 
-// This version uses the new (Spire'19) dictionary format where 
-// the lengths (in symbols) of dictionary strings are provided in a 
-// separate .len file in int32_t integers. 
 
 // The constant Unique is defined in the makefile to make
 // sure the same value is used also in ipostproc.
 // Unique is the first symbol used as a separator; all input symbols must 
 // be smaller than it. Unique can be made larger, but all unique 
 // separators must be smaller than 2^{31}  (this is checked in the code)
+ 
+// This version uses the new (Spire'19) dictionary format where 
+// the lengths (in symbols) of dictionary strings are provided in a 
+// separate .len file of int32_t integers. 
 
 
 int main (int argc, char **argv)
