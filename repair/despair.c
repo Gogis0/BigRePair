@@ -43,7 +43,8 @@ int alph; // size of terminal alphabet, or smallest non terminal symbol
 
 Tpair *R; // rules
 
-int n; // |R|
+size_t n; // |R|
+// int n; // |R|
 
 char *ff;
 FILE *f;
@@ -66,7 +67,7 @@ int expand (int i, int d)
      return ret;
    }
 
-static int bits (int x)
+static int bits (size_t x)
    { int l=0;
      while (x) { x>>=1; l++; }
      return l;
@@ -77,7 +78,8 @@ int main (int argc, char **argv)
    { char fname[1024]; char outname[1024];
      //char *text;
      FILE *Tf,*Rf,*Cf;
-     int i,len,c,u;
+     int i;
+     size_t len,c,u;
      struct stat s;
      fputs("==== Command line:\n",stderr);
      for(int i=0;i<argc;i++)
