@@ -33,13 +33,13 @@ Chile. Blanco Encalada 2120, Santiago, Chile. gnavarro@dcc.uchile.cl
 #include <unistd.h>
 
 typedef struct
-  { int left,right;
+  { unsigned int left,right;
   } Tpair;
 
 long u; // |text| and later current |C| with gaps
 
 
-int alph; // size of terminal alphabet, or smallest non terminal symbol
+unsigned int alph; // size of terminal alphabet, or smallest non terminal symbol
 
 Tpair *R; // rules
 
@@ -48,11 +48,11 @@ size_t n; // |R|
 
 char *ff;
 FILE *f;
-int maxdepth = 0;
+size_t maxdepth = 0;
 
-int expand (int i, int d)
+size_t expand (unsigned int i, size_t d)
 
-   { int ret = 1;
+   { size_t ret = 1;
      char c;
      while (i >= alph) // while i is not a terminal expand recursively
        { ret += expand(R[i-alph].left,d+1);
@@ -78,7 +78,7 @@ int main (int argc, char **argv)
    { char fname[1024]; char outname[1024];
      //char *text;
      FILE *Tf,*Rf,*Cf;
-     int i;
+     unsigned int i;
      size_t len,c,u;
      struct stat s;
      fputs("==== Command line:\n",stderr);
@@ -132,7 +132,7 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot stat file %s\n",fname);
     exit(1);
   }
-     c = len = s.st_size/sizeof(int);
+     c = len = s.st_size/sizeof(unsigned int);
      Cf = fopen (fname,"r");
      if (Cf == NULL)
   { fprintf (stderr,"Error: cannot open file %s for reading\n",fname);
@@ -151,7 +151,7 @@ int main (int argc, char **argv)
   // actual decompression 
      u = 0; f = Tf; 
      for (;len>0;len--)
-  { if (fread(&i,sizeof(int),1,Cf) != 1)
+  { if (fread(&i,sizeof(unsigned int),1,Cf) != 1)
        { fprintf (stderr,"Error: cannot read file %s\n",fname);
          exit(1);
        }
@@ -165,8 +165,8 @@ int main (int argc, char **argv)
   // here n is the number of rules, n+alpha the effective alphabet in C 
   long est_size = (long) ( (2.0*n+(n+c)*(double)bits(n+256))/8) + 1;
   fprintf (stderr,"DesPair succeeded\n");
-  fprintf (stderr,"   Original chars: %i\n",u);
-  fprintf (stderr,"   Number of rules: %i\n",n);
+  fprintf (stderr,"   Original chars: %ld\n",u);
+  fprintf (stderr,"   Number of rules: %ld\n",n);
   fprintf (stderr,"   Compressed sequence length: %i (integers)\n",c);
   fprintf (stderr,"   Maximum rule depth: %i\n",maxdepth);
   fprintf (stderr,"   Estimated output size (bytes): %ld\n",est_size);
