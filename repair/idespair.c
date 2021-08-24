@@ -34,30 +34,30 @@ Chile. Blanco Encalada 2120, Santiago, Chile. gnavarro@dcc.uchile.cl
 #include <limits.h>
 
 typedef struct
-  { int left,right;
+  { unsigned int left,right;
   } Tpair;
 
 long u; // |text| and later current |C| with gaps
 
 
-int alph; // size of terminal alphabet, or smallest non terminal symbol
+unsigned int alph; // size of terminal alphabet, or smallest non terminal symbol
 
 Tpair *R; // rules
 
-int n; // |R|
+size_t n; // |R|
 
 char *ff;
 FILE *f;
-int maxdepth = 0;
+size_t maxdepth = 0;
 
-int expand (int i, int d)
+size_t expand (unsigned int i, unsigned int d)
 
-   { int ret = 1;
+   { size_t ret = 1;
      while (i >= alph) // while i is not a terminal expand recursively
        { ret += expand(R[i-alph].left,d+1);
          i = R[i-alph].right; d++;  // expansion on the right branch is replaced by iteration 
        }
-     if (fwrite(&i,sizeof(int),1,f) != 1)
+     if (fwrite(&i,sizeof(unsigned int),1,f) != 1)
   { fprintf (stderr,"Error: cannot write file %s\n",ff);
     exit(1);
   }
@@ -66,7 +66,7 @@ int expand (int i, int d)
    }
 
 
-static int blog (int x)
+static int blog (size_t x)
    { int l=0;
      while (x) { x>>=1; l++; }
      return l;
@@ -77,7 +77,8 @@ int main (int argc, char **argv)
 
    { char fname[PATH_MAX], outname[PATH_MAX];
      FILE *Tf,*Rf,*Cf;
-     int i,len,c,u;
+     unsigned int i;
+     size_t len,c,u;
      struct stat s;
      fputs("==== Command line:\n",stderr);
      for(int i=0;i<argc;i++)
@@ -125,7 +126,7 @@ int main (int argc, char **argv)
   { fprintf (stderr,"Error: cannot stat file %s\n",fname);
     exit(1);
   }
-     c = len = s.st_size/sizeof(int);
+     c = len = s.st_size/sizeof(unsigned int);
      Cf = fopen (fname,"r");
      if (Cf == NULL)
   { fprintf (stderr,"Error: cannot open file %s for reading\n",fname);
@@ -144,7 +145,7 @@ int main (int argc, char **argv)
   // actual decompression 
      u = 0; f = Tf; ff = outname;
      for (;len>0;len--)
-  { if (fread(&i,sizeof(int),1,Cf) != 1)
+  { if (fread(&i,sizeof(unsigned int),1,Cf) != 1)
        { fprintf (stderr,"Error: cannot read file %s\n",fname);
          exit(1);
        }
@@ -162,9 +163,9 @@ int main (int argc, char **argv)
      // here n is the number of rules, n+alph the effective alphabet in C 
      long est_size = (long) ((2.0*n+(n+c)*(double)blog(n+alph-1))/8+1);     
      fprintf (stderr,"IDesPair succeeded\n");
-     fprintf (stderr,"   Original ints: %i\n",u);
+     fprintf (stderr,"   Original ints: %ld\n",u);
      fprintf (stderr,"   Size of the original input alphabet: %i\n",alph);
-     fprintf (stderr,"   Number of rules: %i\n",n);
+     fprintf (stderr,"   Number of rules: %ld\n",n);
      fprintf (stderr,"   Compressed sequence length: %i (integers)\n",c);
      fprintf (stderr,"   Maximum rule depth: %i\n",maxdepth);
      fprintf (stderr,"   Estimated output size (bytes): %ld\n",est_size);

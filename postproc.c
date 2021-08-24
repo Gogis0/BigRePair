@@ -26,7 +26,7 @@ void die(int test,const char *msg)
 }
 
 
-static int bits (int x)
+static int bits (size_t x)
 
    { int l=0;
      while (x) { x>>=1; l++; }
@@ -38,14 +38,14 @@ int main (int argc, char **argv)
   { FILE *diczR,*diczC,*parseR,*parseC,*R,*C;
     char fname[1024];
     int terms; // how many terminals in diczR
-    int rules; // how many rules in diczR
-    int prules; // how many rules in parseR
-    int sizeC; // size of diczC
-    int psizeC; // size of parseC
+    size_t rules; // how many rules in diczR
+    size_t prules; // how many rules in parseR
+    size_t sizeC; // size of diczC
+    size_t psizeC; // size of parseC
     int phrases; // how many phrases in dicz = terminals in parseR
     struct stat s;
     int v256 = 256; // upper bound on the size of the input alphabet
-    int i,p,e;
+    size_t i,p,e;
     int val[2];
     int *AdiczC; // to read diczC in memory
     int *transl; // translation table for phrases of dicz to their nonterms
@@ -136,16 +136,16 @@ int main (int argc, char **argv)
 
     i = 0; p = 1;
     while (i < sizeC)
-       { int j = i;
-   int ni;
+       { size_t j = i;
+   size_t ni;
    while ((AdiczC[j] < 256) || (AdiczC[j] >= terms))
       { if (AdiczC[j] >= 256) AdiczC[j] -= terms-256; 
         j++;
       }
    ni = j+1;
    while (j-i > 1)
-     { int k = i;
-       int ko = i;
+     { size_t k = i;
+       size_t ko = i;
        while (k+1 < j)
     { val[0] = AdiczC[k++]; val[1] = AdiczC[k++];
       fwrite(val,sizeof(int),2,R);
@@ -228,10 +228,10 @@ int main (int argc, char **argv)
     //               actually we could use just r*log(alpha) bits for the leaves
     //               since they are non terminal  
     rules += prules; // final number of rules
-    long est_size = (long) ( (2.0*rules+((double)bits(256+rules))*(rules+psizeC))/8 ) +1;
+    long est_size = (long) ( (2.0*rules+((double)bits((size_t)256+rules))*(rules+psizeC))/8 ) +1;
     fprintf(stderr,"  Original file size: %li (bytes)\n",s.st_size);
-    fprintf(stderr,"  Number of rules: %i\n",rules);
-    fprintf(stderr,"  Final sequence length: %i (integers)\n",psizeC);
+    fprintf(stderr,"  Number of rules: %li\n",rules);
+    fprintf(stderr,"  Final sequence length: %li (integers)\n",psizeC);
     fprintf(stderr,"  Estimated output size (bytes): %ld\n",est_size);
     fprintf(stderr,"  Compression ratio: %0.2f%%\n", (100.0* est_size)/s.st_size);
     fprintf(stdout,"  Estimated output size (stdout): %ld\n",est_size); // don't change this: est_size must be the the last printed item 
