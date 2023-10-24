@@ -11,7 +11,7 @@ Copyrights 2019- by the authors.
 * `make` (create the C/C++ executables) 
 * `bigrepair -h` (get usage instruction)
 
-Note that `bigrepair` is a Python script so you need at least Python 3.4 installed.
+Note that `bigrepair` is a Python script so you need at least **Python 3.6** installed.
  
 
 
@@ -36,7 +36,7 @@ For very large input files (or not so large but without many repetitions), RePai
 
 ### Experimental feature (April 2020)
 
-Using the option `-i` *bigrepair* will consider the input file as a sequence of 32bit integers (hence the input file size must be a multiple of 4). The output grammar will have integers as non-terminal. To get the original file use again *bigrepair* with option `-di`. Currently all the integers in the input file must be smaller than 2<sup>30</sup>.
+Using the option `-i` *bigrepair* will consider the input file as a sequence of 32bit integers (hence the input file size must be a multiple of 4). The output grammar will have integers as non-terminal. To retreive the original file use again *bigrepair* with option `-di`. Currently all the integers in the input file must be smaller than 2<sup>30</sup>.
 
 
 ## References
