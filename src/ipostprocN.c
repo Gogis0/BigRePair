@@ -23,6 +23,9 @@
 // now defined in the makefile. see file iprocdic.c for an explanation
 
 //  exit program with error msg if test is true
+
+int Unique = 0x78000000;
+
 void die(int test,const char *msg)
 {
   if(test) {
@@ -105,6 +108,10 @@ int main (int argc, char **argv)
     rewind(diczR);
     // get number of terms in dicz.int.R
     e = fread(&terms,sizeof(int),1,diczR);
+
+    //fprintf(stderr, "terms: %d\n", terms);
+    //fprintf(stderr, "terms-Unique: %d\n", terms - 0x78000000);
+
     die(e!=1,"Read error");
     assert(terms>Unique);  // Unique is a terminal in dicz.int
     stat (fname,&s);
@@ -138,13 +145,21 @@ int main (int argc, char **argv)
     die(e!=sizeC,"Read error");
     fclose (diczC);
 
+    //fprintf(stderr, "largest_symbol: %d\n", largest_symbol);
+
     // complete computation of the largest symbol 
     for(int i=0;i<sizeC;i++)
       if(AdiczC[i]<Unique && AdiczC[i]>largest_symbol)
          largest_symbol = AdiczC[i];
     // number or terminals (upper bound), id of the first non terminal 
     alpha = largest_symbol +1;
-    fprintf(stderr,"Size of the original input alphabet: %d\n",alpha);
+
+    //fprintf(stderr, "rules: %d\n", rules);
+    //fprintf(stderr, "alpha: %d\n", alpha);
+    //fprintf(stderr, "terms-alpha: %d\n", terms - alpha);
+    //fprintf(stderr, "phrases: %d\n", phrases);
+
+    //fprintf(stderr,"Size of the original input alphabet: %d\n",alpha);
 
     // allocate translation table  
     transl = (int*) malloc ((phrases+1)*sizeof(int));
@@ -155,6 +170,9 @@ int main (int argc, char **argv)
     // start creating .R file    
     // non terminals in the output grammar have id >=alpha
     fwrite(&alpha,sizeof(int),1,R); 
+    //placeholders for rules and diczEndPos at end
+    fwrite(&alpha, sizeof(int), 1, R);
+    fwrite(&alpha, sizeof(int), 1, R);
 
     // copy rules from dicz.int.R to .R shifting their index of (terms - alpha)
     // leaves cursor at the end of R, ready to add more rules
@@ -163,17 +181,32 @@ int main (int argc, char **argv)
       die(e!=2,"Read error");
       // right hand side of rules are true terminal or nonterminal (ie not separator)
       assert(val[0]<alpha || val[0]>=terms);
-      if (val[0] >= terms) val[0] -= (terms-alpha); 
+      if (val[0] >= terms) val[0] -= (terms-alpha);         //if yeast.fasta.parse.dicz is self-referencing
       assert(val[1]<alpha || val[1]>=terms);
       if (val[1] >= terms) val[1] -= (terms-alpha); 
       fwrite(val,sizeof(int),2,R);
     }
     fclose(diczR);
-    assert(ftell(R)==(1+2*rules)*sizeof(int));  // written exactly "rules" rules
+    assert(ftell(R)==(3+2*rules)*sizeof(int));  // written exactly "rules" rules
 
     // scan dicz.int.C, identify the terms and create balanced rules on them
     // adding those to R and remembering the mapping phrase -> top nonterm in transl
+    //terms = alpha + # of rules in yeast.fasta.parse.dicz (1 seperator per rule)
     i = 0; p = 1;
+
+    //debug section
+    /*int count = 0;
+    int old = rules;
+    while (i < sizeC) {
+        if (AdiczC[i] < alpha)
+            count++;
+        i++;
+    }
+    fprintf(stderr, "# of AdiczC < alpha: %d\n", count);
+    count = 0;*/
+
+    i = 0;
+    //int max = 0;
     while (i < sizeC) { 
       int j = i;
       while ((AdiczC[j] < alpha) || (AdiczC[j] >= terms)) // until we reach a separator 
@@ -186,7 +219,14 @@ int main (int argc, char **argv)
         int k = i;
         int ko = i;
         while (k+1 < j) { 
-          val[0] = AdiczC[k++]; val[1] = AdiczC[k++]; // new rule to generate AdiczC[k,k+1]
+            /*if (k == i)
+                val[0] = AdiczC[k++] + alpha + rules;
+            else*/
+                val[0] = AdiczC[k++];
+            /*if (k == i + 1)
+                val[1] = AdiczC[k++] + alpha + rules; // new rule to generate AdiczC[k,k+1]
+            else*/
+                val[1] = AdiczC[k++];
           fwrite(val,sizeof(int),2,R);
           AdiczC[ko++] = alpha + rules++;           // left hand side of the new rule 
         }
@@ -194,10 +234,35 @@ int main (int argc, char **argv)
         j = ko;
       }
       transl[p++] = AdiczC[i];  // save non terminal generating the phrase 
+
+      //debug section
+      /*if (AdiczC[i] > max)
+          max = AdiczC[i];
+      if (AdiczC[i] < alpha) {
+          fprintf(stderr, "%d: ", count);
+          fprintf(stderr, "%d\n", AdiczC[i]);
+      }
+      count++;*/
       i = ni;
     }
+    /*i = 0;
+    while (i < sizeC) {
+        if (AdiczC[i] < alpha)
+            count++;
+        i++;
+    }
+    fprintf(stderr, "# of modified AdiczC < alpha: %d\n", count);
+    fprintf(stderr, "# of rules added from diczC: %d\n", rules - old);
+    fprintf(stderr, "sizeC: %d\n", sizeC);*/
+
     free (AdiczC);
-    assert(ftell(R)==(1+2*rules)*sizeof(int));
+    assert(ftell(R)==(3+2*rules)*sizeof(int));
+
+    /*fprintf(stderr, "transl max: %d\n", max);
+    fprintf(stderr, "position: %d\n", ftell(R) / 4);
+    fprintf(stderr, "prules: %d\n", prules);*/
+
+    int diczEndPos = rules;
 
     // translate the rules in .parse.R according to table transl
     // terminal are transformed into their balanced grammar 
@@ -205,20 +270,72 @@ int main (int argc, char **argv)
     for (i=0;i<prules;i++)
        { e = fread(val,sizeof(int),2,parseR);
          die(e!=2,"Read error");
-         if (val[0] < phrases) val[0] = transl[val[0]];   // terminal in the parse 
-         else val[0] = val[0] - phrases + rules + alpha;
-         if (val[1] < phrases) val[1] = transl[val[1]];
-         else val[1] = val[1] - phrases + rules + alpha;
+         if (val[0] < phrases) {
+             //fprintf(stderr, "val[0] S: %d\n", val[0]);
+             val[0] = transl[val[0]];   // terminal in the parse 
+             /*if (val[0] < alpha) fprintf(stderr, "%d < alpha, transl\n", val[0]);
+             else fprintf(stderr, "%d\n", val[0]);*/
+         }
+         else {
+             //fprintf(stderr, "val[0] L: %d\n", val[0]);
+             val[0] = val[0] - phrases + rules + alpha;
+             /*if (val[0] < alpha) fprintf(stderr, "%d ???\n");
+             else fprintf(stderr, "%d\n", val[0]);*/
+         }
+         if (val[1] < phrases) {
+             //fprintf(stderr, "val[1] S: %d\n", val[1]);
+             val[1] = transl[val[1]];
+             /*if (val[1] < alpha) fprintf(stderr, "%d <alpha, transl\n", val[1]);
+             else fprintf(stderr, "%d\n", val[1]);*/
+         }
+         else {
+             //fprintf(stderr, "val[1] L: %d\n", val[1]);
+             val[1] = val[1] - phrases + rules + alpha;
+             /*if (val[1] < alpha) fprintf(stderr, "%d???\n");
+             else fprintf(stderr, "%d\n", val[1]);*/
+         }
          fwrite(val,sizeof(int),2,R);
        }
     fclose (parseR);
-    assert(ftell(R)==(1+2*(rules+prules))*sizeof(int));
+    assert(ftell(R)==(3+2*(rules+prules))*sizeof(int));
+    int Rlen = rules + prules;
+    fprintf(stderr, "position2: %d\n", ftell(R) / 4);
     
+    //update total # of rules in R
+    fseek(R, sizeof(int), SEEK_SET);
+    fwrite(&rules, sizeof(int), 1, R);
+    fwrite(&Rlen, sizeof(int), 1, R);
+
     // output .R file completed
     if (fclose(R) != 0) { 
       fprintf (stderr,"Cannot close %s.R\n",argv[1]); exit(1);
     }
     
+    //debug, cleanup of debug
+    /*sprintf(fname, "%s.R", argv[1]);
+    R = fopen(fname, "r"); // output R file
+    //fseek(R, 0, SEEK_SET);
+    fprintf(stderr, "pos: %d\n", ftell(R) / 4);
+    int debug;
+    fread(&debug, sizeof(int), 1, R);
+    fprintf(stderr, "alpha?: %d\n", debug);
+    fread(&debug, sizeof(int), 1, R);
+    fprintf(stderr, "rules?: %d\n", debug);
+    fread(&debug, sizeof(int), 1, R);
+    fprintf(stderr, "Rlen: %d\n", debug);
+    fprintf(stderr, "pos: %d\n", ftell(R) / 4);
+    max = 0;
+    for (i = 0; i < Rlen; i++) {
+        e = fread(val, sizeof(int), 2, R);
+        die(e != 2, "Read error");
+        if (val[0] > max) max = val[0];
+        if (val[1] > max) max = val[1];
+    }
+    fprintf(stderr, "max: %d\n", max);
+    if (fclose(R) != 0) {
+        fprintf(stderr, "Cannot close %s.R\n", argv[1]); exit(1);
+    }*/
+
     // creation of the final .C file
     // translate the rules in .parse.C according to table transl
     sprintf(fname,"%s.parse.C",argv[1]);
@@ -235,11 +352,25 @@ int main (int argc, char **argv)
       fprintf (stderr, "Cannot open %s\n",fname); exit(1);
     }
 
+    //readable outputs commented out
+    /*sprintf(fname, "%s.Creadable", argv[1]);
+    FILE* Creadable = fopen(fname, "w");
+    int upto10 = 0;*/
+
     for (i=0;i<psizeC;i++)
        { e = fread(val,sizeof(int),1,parseC);
          die(e!=1,"Read error");
-         if (val[0] < phrases) val[0] = transl[val[0]];   // terminal in parse replace with grammar
-         else val[0] = val[0] - phrases + rules + alpha; // non terminal shifted   
+         //fprintf(Creadable, "%d | ", val[0]);
+         if (val[0] < phrases) val[0] = transl[val[0]];   // terminal in parse replace with grammar (pfp dict)
+         else { val[0] = val[0] - phrases + rules + alpha; }// non terminal shifted   (rules?)          (+2?) (doubtful)
+
+         /*fprintf(Creadable, "%d, ", val[0]);
+         if (upto10 >= 5) {
+             fprintf(Creadable, "\n");
+             upto10 = 0;
+         }
+         upto10++;*/
+
          fwrite(val,sizeof(int),1,C);
        }
     free (transl);
